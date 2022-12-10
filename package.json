@@ -1,0 +1,32 @@
+{
+  "name": "maincard-contract",
+  "version": "1.0.0",
+  "description": "Solidity smart contracts for Maincard.io ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maincard-io/maincard-contract.git"
+  },
+  "keywords": [
+    "solidity",
+    "maincard.io",
+    "prediction",
+    "sports",
+    "esports"
+  ],
+  "author": "Maincard.io Team",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maincard-io/maincard-contract/issues"
+  },
+  "homepage": "https://github.com/maincard-io/maincard-contract#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "@openzeppelin/contracts-upgradeable": "^4.8.0",
+    "@openzeppelin/hardhat-upgrades": "^1.21.0",
+    "hardhat": "^2.12.4"
+  }
+}
