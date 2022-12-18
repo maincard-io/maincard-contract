@@ -1,0 +1,112 @@
+const { ethers, upgrades } = require("hardhat");
+const getNamedAccount = require("./DEPLOYMENTS.js")
+
+async function main() {
+  const [admin] = await ethers.getSigners();
+  console.log("Admin: ", admin);
+  
+  const mainToken = getNamedAccount("mainToken")
+  const cardProxy = getNamedAccount("cardProxy")
+  const arenaProxy = getNamedAccount("arenaProxy")
+  const auctionProxy = getNamedAccount("auctionProxy")
+
+  const CARD_DEPLOYED = true;
+  const ARENA_DEPLOYED = true;
+  const AUCTION_DEPLOYED = true;
+  const MAINTOKEN_DEPOYED = true;
+  const MAGICBOX_DEPLOYED = false;
+
+  const Card = await ethers.getContractFactory("Card");
+  const card = await (!CARD_DEPLOYED ? upgrades.deployProxy(Card) : Card.attach(cardProxy));
+  await card.deployed();
+  console.log("Card deployed to:", card.address);
+
+  const Arena = await ethers.getContractFactory("Arena");
+  const arena = await (!ARENA_DEPLOYED ? upgrades.deployProxy(Arena) : Arena.attach(arenaProxy));
+  await arena.deployed();
+  console.log("Arena deployed to:", arena.address);
+
+  const MainToken = await ethers.getContractFactory("MainToken");
+  const maintoken = await (!MAINTOKEN_DEPOYED ? upgrades.deployProxy(MainToken) : MainToken.attach(mainToken));
+  await maintoken.deployed();
+  console.log("MainToken deployed to:", maintoken.address);
+
+  const Auction = await ethers.getContractFactory("Auction");
+  const auction = await (!AUCTION_DEPLOYED ? upgrades.deployProxy(Auction) : Auction.attach(auctionProxy));
+  await auction.deployed();
+  console.log("Auction deployed to:", auction.address);
+
+  const MagicBox = await ethers.getContractFactory("MagicBox");
+  const magicBox = await (!MAGICBOX_DEPLOYED ?
+                          MagicBox.deploy(getNamedAccount("vrfSubscriptionId"),
+                                          getNamedAccount("vrfCoordinator"),
+                                          400000,
+                                          getNamedAccount("vrfKeyHash"),
+                                          card.address) :
+                          MagicBox.attach(magicBoxAddress));
+  await magicBox.deployed();
+  console.log("MagicBox deployed to:", magicBox.address);
+
+  const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
+  const grantPriceManagerRoleTx = await card.grantRole(PRICE_MANAGER_ROLE, admin.address);
+  await grantPriceManagerRoleTx.wait();
+
+  const ARENA_CHANGER_ROLE = await card.ARENA_CHANGER_ROLE();
+  const grantArenaChangerRoleTx = await card.grantRole(ARENA_CHANGER_ROLE, admin.address);
+  await grantArenaChangerRoleTx.wait();
+
+  const setArenaTx = await card.setArenaAddress(arena.address);
+  await setArenaTx.wait();
+  const setCardTx= await arena.setCardAddress(card.address);
+  await setCardTx.wait();
+  //const setTokenTx = await card.setAcceptedCurrency(freetoken.address);
+  //await setTokenTx.wait();
+
+  const {minterAccount} = await getNamedAccounts();
+  const MINTER_ROLE = await card.MINTER_ROLE();
+  const grantMinterRoleTx = await card.grantRole(MINTER_ROLE, minterAccount);
+  await grantMinterRoleTx.wait();
+
+  const setMainTokenInArenaTx = await arena.setMainToken(maintoken.address);
+  await setMainTokenInArenaTx.wait();
+  const setMainTokenInCardTx = await card.setMainTokenAddress(maintoken.address);
+  await setMainTokenInCardTx.wait();
+
+  const changeOwnerTx = await arena.transferOwnership(minterAccount);
+  await changeOwnerTx.wait();
+
+  const setRegularPriceTx = await card.setTokenPrice(     "10000000000000000000", 0);
+  await setRegularPriceTx.wait();
+  const setRarePriceTx = await card.setTokenPrice(       "100000000000000000000", 1);
+  await setRarePriceTx.wait();
+  const setEpicPriceTx = await card.setTokenPrice(      "1000000000000000000000", 2);
+  await setEpicPriceTx.wait();
+  const setLegendaryPriceTx = await card.setTokenPrice("10000000000000000000000", 3);
+  await setLegendaryPriceTx.wait();
+  const setRegularUpgradePriceTx = await card.setTokenUpgradePrice(     "2000000000000000000", 0);
+  await setRegularUpgradePriceTx.wait();
+  const setRareUpgradePriceTx = await card.setTokenUpgradePrice(       "20000000000000000000", 1);
+  await setRareUpgradePriceTx.wait();
+  const setEpicUpgradePriceTx = await card.setTokenUpgradePrice(      "200000000000000000000", 2);
+  await setEpicUpgradePriceTx.wait();
+  const setLegendaryUpgradePriceTx = await card.setTokenUpgradePrice("2000000000000000000000", 3);
+  await setLegendaryUpgradePriceTx.wait();
+
+  const setCardForAuctionTx = await auction.setCardAddress(card.address);
+  await setCardForAuctionTx.wait()
+  const setMaintokenAuctionTx = await auction.setMaintokenAddress(maintoken.address);
+  await setMaintokenAuctionTx.wait();
+
+  const MC_MINTER_ROLE = await maintoken.MINTER_ROLE()
+  const setArenaAsMaincardMinterTx = await maintoken.grantRole(MC_MINTER_ROLE, arena.address)
+
+  await magicBox.setProbability(2);
+  await card.grantRole(MINTER_ROLE, magicBox.address);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
