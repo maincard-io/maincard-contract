@@ -52,21 +52,21 @@ contract Card is
     MainToken _maintoken;
     address _auctionAddress;
 
-    function setArenaAddress(IArena arena) public {
+    function setArenaAddress(IArena arena) external {
         require(
             hasRole(ARENA_CHANGER_ROLE, msg.sender),
             "msg.sender should have granted ARENA_CHANGER_ROLE"
         );
         _arenaAddress = arena;
     }
-    function setMainTokenAddress(MainToken maintoken) public {
+    function setMainTokenAddress(MainToken maintoken) external {
         require(
             hasRole(ARENA_CHANGER_ROLE, msg.sender),
             "msg.sender should have granted ARENA_CHANGER_ROLE"
         );
         _maintoken = maintoken;
     }
-    function setAuctionAddress(address auction) public {
+    function setAuctionAddress(address auction) external {
         require(
             hasRole(ARENA_CHANGER_ROLE, msg.sender),
             "msg.sender should have granted ARENA_CHANGER_ROLE"
@@ -84,7 +84,7 @@ contract Card is
         return false;
     }
 
-    function setAcceptedCurrency(IERC20Upgradeable currency) public {
+    function setAcceptedCurrency(IERC20Upgradeable currency) external {
         require(
             hasRole(PRICE_MANAGER_ROLE, msg.sender),
             "msg.sender should have granted PRICE_MANAGER_ROLE"
@@ -92,14 +92,14 @@ contract Card is
         _acceptedCurrency = currency;
     }
 
-    function setTokenPrice(uint256 newTokenPrice, CardRarity rarity) public {
+    function setTokenPrice(uint256 newTokenPrice, CardRarity rarity) external {
         require(
             hasRole(PRICE_MANAGER_ROLE, msg.sender),
             "msg.sender should have granted PRICE_MANAGER_ROLE"
         );
         _prices[rarity] = newTokenPrice;
     }
-    function setTokenUpgradePrice(uint256 newTokenPrice, CardRarity rarity) public {
+    function setTokenUpgradePrice(uint256 newTokenPrice, CardRarity rarity) external {
         require(
             hasRole(PRICE_MANAGER_ROLE, msg.sender),
             "msg.sender should have granted PRICE_MANAGER_ROLE"
@@ -109,7 +109,7 @@ contract Card is
 
     function _mint(address newTokenOwner, CardRarity rarity) internal {
         // require(isLessRareOrEq(rarity, getMintAllowance(newTokenOwner)), "You have not uncovered the level");
-        if (isLessRareOrEq(rarity, getMintAllowance(newTokenOwner))) {
+        if (isLessRareOrEq(getMintAllowance(newTokenOwner), rarity)) {
             _mintAllowances[newTokenOwner] = rarity;
         }
         _safeMint(newTokenOwner, _lastMint.current());
@@ -119,7 +119,7 @@ contract Card is
         _lastMint.increment();
     }
 
-    function mint(CardRarity rarity) public payable {
+    function mint(CardRarity rarity) external payable {
         require(rarity != CardRarity.Mythic, "Mythic is not buyable");
         require(_prices[rarity] > 0, "Price is not set");
         require(msg.value == _prices[rarity], 
@@ -131,7 +131,7 @@ contract Card is
         // _acceptedCurrency.transferFrom(msg.sender, address(this), _prices[rarity]);
     }
 
-    function freeMint(address newTokenOwner, CardRarity rarity) public {
+    function freeMint(address newTokenOwner, CardRarity rarity) external payable {
         require(
             hasRole(MINTER_ROLE, msg.sender),
             "msg.sender should have granted MINTER_ROLE"
@@ -190,7 +190,7 @@ contract Card is
         _safeTransfer(from, to, cardId, data);
     }
 
-    function withdraw() public {
+    function withdraw() external {
         require(
             hasRole(WITHDRAWER_ROLE, msg.sender),
             "msg.sender should have granted WITHDRAWER_ROLE"
@@ -246,7 +246,7 @@ contract Card is
         _burn(tokenId);
     }
 
-    function upgrade(uint256 cardId1, uint256 cardId2) public payable {
+    function upgrade(uint256 cardId1, uint256 cardId2) external payable {
         require(_isApprovedOrOwner(_msgSender(), cardId1), "not owner");
         require(_isApprovedOrOwner(_msgSender(), cardId2), "not owner");
         CardRarity rarity1 = getRarity(cardId1);
@@ -291,11 +291,11 @@ contract Card is
         revert("Unknown rarity");
     }
 
-    function livesRemaining(uint256 cardId) public view override returns(uint256) {
+    function livesRemaining(uint256 cardId) external view override returns(uint256) {
         return _livesRemaining[cardId];
     }
 
-    function rewardMaintokens(uint256 cardId) public view returns(uint256) {
+    function rewardMaintokens(uint256 cardId) external view returns(uint256) {
         uint256 curLivesRemaining = _livesRemaining[cardId];
         CardRarity rarity = _rarities[cardId];
         uint256 multiplier = uint256(10)**(_maintoken.decimals());
@@ -323,6 +323,11 @@ contract Card is
         }
         revert("Unknown rarity");
         */
+    }
+
+    function cardPrice(CardRarity rarity) external view returns(uint256) {
+        require(_prices[rarity] > 0, "not buyable");
+        return _prices[rarity];
     }
 
     function recoveryMaintokens(uint256 cardId) public view returns(uint256) {
@@ -357,7 +362,7 @@ contract Card is
     }
 
     /* Pay with MainTokens */
-    function restoreLive(uint256 cardId) public {
+    function restoreLive(uint256 cardId) external {
         // If paid in MainTokens, price x5
         uint256 cost = recoveryMaintokens(cardId);
         _restoreLive(cardId);
@@ -365,7 +370,7 @@ contract Card is
     }
 
     /* Pay with MATIC */
-    function restoreLiveMatic(uint256 cardId) public payable {
+    function restoreLiveMatic(uint256 cardId) external payable {
         uint256 cost = recoveryMatic(cardId);
         require(msg.value == cost, "Not enough MATIC");
         _restoreLive(cardId);
