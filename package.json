@@ -24,7 +24,9 @@
   },
   "homepage": "https://github.com/maincard-io/maincard-contract#readme",
   "devDependencies": {
+    "@chainlink/contracts": "^0.5.1",
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "@openzeppelin/contracts": "^4.8.0",
     "@openzeppelin/contracts-upgradeable": "^4.8.0",
     "@openzeppelin/hardhat-upgrades": "^1.21.0",
     "hardhat": "^2.12.4"
