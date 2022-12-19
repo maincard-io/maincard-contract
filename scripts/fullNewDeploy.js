@@ -22,7 +22,7 @@ async function main() {
   console.log("Card deployed to:", card.address);
 
   const Arena = await ethers.getContractFactory("Arena");
-  const arena = await (!ARENA_DEPLOYED ? upgrades.deployProxy(Arena) : Arena.attach(arenaProxy));
+  const arena = await (!ARENA_DEPLOYED ? upgrades.deployProxy(Arena) : Arena.attach(arenaProxy).connect(admin));
   await arena.deployed();
   console.log("Arena deployed to:", arena.address);
 
@@ -43,7 +43,7 @@ async function main() {
                                           400000,
                                           getNamedAccount("vrfKeyHash"),
                                           card.address) :
-                          MagicBox.attach(magicBoxAddress));
+                          MagicBox.attach(getNamedAccount("magicBox")));
   await magicBox.deployed();
   console.log("MagicBox deployed to:", magicBox.address);
 
@@ -62,7 +62,7 @@ async function main() {
   //const setTokenTx = await card.setAcceptedCurrency(freetoken.address);
   //await setTokenTx.wait();
 
-  const {minterAccount} = await getNamedAccounts();
+  const minterAccount = await getNamedAccount("minterAccount");
   const MINTER_ROLE = await card.MINTER_ROLE();
   const grantMinterRoleTx = await card.grantRole(MINTER_ROLE, minterAccount);
   await grantMinterRoleTx.wait();
@@ -75,22 +75,13 @@ async function main() {
   const changeOwnerTx = await arena.transferOwnership(minterAccount);
   await changeOwnerTx.wait();
 
-  const setRegularPriceTx = await card.setTokenPrice(     "10000000000000000000", 0);
-  await setRegularPriceTx.wait();
-  const setRarePriceTx = await card.setTokenPrice(       "100000000000000000000", 1);
-  await setRarePriceTx.wait();
-  const setEpicPriceTx = await card.setTokenPrice(      "1000000000000000000000", 2);
-  await setEpicPriceTx.wait();
-  const setLegendaryPriceTx = await card.setTokenPrice("10000000000000000000000", 3);
-  await setLegendaryPriceTx.wait();
-  const setRegularUpgradePriceTx = await card.setTokenUpgradePrice(     "2000000000000000000", 0);
-  await setRegularUpgradePriceTx.wait();
-  const setRareUpgradePriceTx = await card.setTokenUpgradePrice(       "20000000000000000000", 1);
-  await setRareUpgradePriceTx.wait();
-  const setEpicUpgradePriceTx = await card.setTokenUpgradePrice(      "200000000000000000000", 2);
-  await setEpicUpgradePriceTx.wait();
-  const setLegendaryUpgradePriceTx = await card.setTokenUpgradePrice("2000000000000000000000", 3);
-  await setLegendaryUpgradePriceTx.wait();
+  for (let i = 0; i <= 3; ++i) {
+    const setPriceTx = await card.setTokenPrice(getNamedAccount(`tokenPrice${i}`), i);
+    await setPriceTx.wait();
+
+    const setUpgradePriceTx = await card.setTokenUpgradePrice(getNamedAccount(`tokenUpgradePrice${i}`), i);
+    await setUpgradePriceTx.wait()
+  }
 
   const setCardForAuctionTx = await auction.setCardAddress(card.address);
   await setCardForAuctionTx.wait()
@@ -99,9 +90,13 @@ async function main() {
 
   const MC_MINTER_ROLE = await maintoken.MINTER_ROLE()
   const setArenaAsMaincardMinterTx = await maintoken.grantRole(MC_MINTER_ROLE, arena.address)
+  await setArenaAsMaincardMinterTx.wait()
 
-  await magicBox.setProbability(2);
-  await card.grantRole(MINTER_ROLE, magicBox.address);
+  const setProbabilityTx = await magicBox.setProbability(2);
+  await setProbabilityTx.wait()
+
+  const grantMinterToMagicBox = await card.grantRole(MINTER_ROLE, magicBox.address);
+  await grantMinterToMagicBox.wait()
 }
 
 main()

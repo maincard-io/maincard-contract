@@ -22,7 +22,7 @@ module.exports = {
   networks: {
     mumbai: {
       url: ["https://matic-mumbai.chainstacklabs.com",
-            "https://rpc.ankr.com/polygon_mumbai"][0],
+            "https://rpc.ankr.com/polygon_mumbai"][1],
       accounts: [process.env.MUMBAI_DEPLOYER],
       timeout: 2000000,
     },
