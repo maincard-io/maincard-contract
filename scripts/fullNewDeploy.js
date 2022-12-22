@@ -87,12 +87,14 @@ async function main() {
   await setCardForAuctionTx.wait()
   const setMaintokenAuctionTx = await auction.setMaintokenAddress(maintoken.address);
   await setMaintokenAuctionTx.wait();
+  const setAuctionCommission = await auction.setCommission(5)
+  await setAuctionCommission.wait()
 
   const MC_MINTER_ROLE = await maintoken.MINTER_ROLE()
   const setArenaAsMaincardMinterTx = await maintoken.grantRole(MC_MINTER_ROLE, arena.address)
   await setArenaAsMaincardMinterTx.wait()
 
-  const setProbabilityTx = await magicBox.setProbability(2);
+  const setProbabilityTx = await magicBox.setProbability(0x03030302);
   await setProbabilityTx.wait()
 
   const grantMinterToMagicBox = await card.grantRole(MINTER_ROLE, magicBox.address);

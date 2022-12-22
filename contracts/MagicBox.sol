@@ -31,6 +31,10 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
     uint16 _requestConfirmations;
     uint32 _probabilityVector; /* 4x8bit uints, each stores 0..100, [LEG][EPIC][RAR][COM] */
 
+    function setPausedState(bool paused) external onlyOwner {
+        if (paused) { _pause(); } else { _unpause(); }
+    }
+
     function setCallbackGasLimit(uint32 newCallbackGasLimit) external onlyOwner {
         _callbackGasLimit = newCallbackGasLimit;
     }
