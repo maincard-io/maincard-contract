@@ -149,6 +149,7 @@ describe("Arena tests", () => {
     let currentBlockTime;
     const halfHour = 1800;
     const oneHour = 3600;
+    const twoDays = 2 * 24 * 3600;
 
     before(async () => {
         [admin, alice, bob] = await ethers.getSigners();
@@ -340,8 +341,13 @@ describe("Arena tests", () => {
         expect(livesRemainingAfterLosing).to.be.equal(1);
 
         // Sending
-        eventId = await createEvent(currentBlockTime + halfHour);
+        eventId = await createEvent(currentBlockTime + twoDays + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
+        // Sending within cooloff period.
+        await expect(arenaAsAlice.makeBet(eventId, cardId, SecondWon)).to.be.reverted;
+        await ethers.provider.send('evm_increaseTime', [twoDays]);
+        currentBlockTime = currentBlockTime + twoDays;
+        await ethers.provider.send('evm_mine');
         let makeBetTx = await arenaAsAlice.makeBet(eventId, cardId, SecondWon);
         await makeBetTx.wait();
 
@@ -544,6 +550,9 @@ describe("Auction tests", () => {
         const setCardAucTx = await auction.setCardAddress(card.address);
         await setCardAucTx.wait();
 
+        const setAuctionFees = await auction.setCommission(5)
+        await setAuctionFees.wait()
+
         await card.setTokenPrice(   "10000000000000000000", 0);
         await card.setTokenPrice(  "100000000000000000000", 1);
         await card.setTokenPrice( "1000000000000000000000", 2);
@@ -621,7 +630,10 @@ describe("Auction tests", () => {
         await ethers.provider.send('evm_mine');
 
         // even it bob tries to take it back, it is sent to carl
+        const bobsBalanceBeforeTakingCard = await maintoken.balanceOf(bob.address)
         await takeCard(cardId, bob)
+        const bobsBalanceAfterTakingCard = await maintoken.balanceOf(bob.address)
+        expect(bobsBalanceAfterTakingCard.sub(bobsBalanceBeforeTakingCard).toString()).to.be.equal("118")
         const cardOwnerAfterTakingFromAuc = await card.ownerOf(cardId);
         expect(cardOwnerAfterTakingFromAuc).to.be.equal(carl.address);
     });

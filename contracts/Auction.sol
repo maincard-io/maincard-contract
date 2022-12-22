@@ -26,16 +26,20 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
     Card card;
     MainToken maintoken;
     mapping(address => MyBet[]) myBets;
+    uint8 _commission;
 
     function initialize() public initializer {
         __Ownable_init();
     }
 
-    function setCardAddress(Card _card) public onlyOwner {
+    function setCardAddress(Card _card) external onlyOwner {
         card = _card;
     }
-    function setMaintokenAddress(MainToken _maintoken) public onlyOwner {
+    function setMaintokenAddress(MainToken _maintoken) external onlyOwner {
         maintoken = _maintoken;
+    }
+    function setCommission(uint8 commission) external onlyOwner {
+        _commission = commission;
     }
 
     function placeCardToAuction(uint256 cardId, uint256 startingPrice) public {
@@ -82,7 +86,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         auctionsByUser[thisAuction.creator].pop();
 
         card.safeTransferFrom(address(this), receiver, cardId);
-        require(maintoken.transfer(thisAuction.creator, thisAuction.bestBet));
+        require(maintoken.transfer(thisAuction.creator, thisAuction.bestBet * (100 - _commission) / 100));
         thisAuction.bestBet = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         thisAuction.startingPrice = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         thisAuction.bestBettor = address(0x0);

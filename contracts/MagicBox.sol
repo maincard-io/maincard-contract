@@ -29,7 +29,7 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
     mapping(uint256 => Request) public _requests;
     uint32 public _callbackGasLimit;
     uint16 _requestConfirmations;
-    uint8 _probability;
+    uint32 _probabilityVector; /* 4x8bit uints, each stores 0..100, [LEG][EPIC][RAR][COM] */
 
     function setCallbackGasLimit(uint32 newCallbackGasLimit) external onlyOwner {
         _callbackGasLimit = newCallbackGasLimit;
@@ -42,11 +42,19 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
         _requestConfirmations = newRequestConfirmations;
     }
 
-    function setProbability(uint8 probability)
+    function setProbability(uint32 probabilityVector)
         external
         onlyOwner
     {
-        _probability = probability;
+        _probabilityVector = probabilityVector;
+    }
+
+    function getProbability(ICard.CardRarity rarity)
+        public
+        view
+        returns (uint8)
+    {
+        return uint8(0xff & (_probabilityVector >> (8 * uint8(rarity))));
     }
 
     function openBox(ICard.CardRarity rarity)
@@ -78,7 +86,7 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
     }
 
     function getBoxPrice(ICard.CardRarity rarity) public view returns (uint256) {
-        return 102 * _card.cardPrice(rarity) / 100;
+        return (100 + getProbability(rarity)) * _card.cardPrice(rarity) / 100;
     }
 
     function fulfillRandomWords(
@@ -86,7 +94,7 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
         uint256[] memory randomWords
     ) internal override {
         require(_requests[requestId].initiator != address(0x0), "request not found");
-        if (randomWords[0] % 100 < _probability) {
+        if (randomWords[0] % 100 < getProbability(_requests[requestId].requestedRarity)) {
             _card.freeMint(_requests[requestId].initiator, ICard.CardRarity(uint(_requests[requestId].requestedRarity) + 1));
         } else {
             _card.freeMint(_requests[requestId].initiator, _requests[requestId].requestedRarity);

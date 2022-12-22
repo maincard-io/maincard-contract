@@ -27,7 +27,7 @@ describe("MagicBox tests", function () {
         this.magicBox = await MagicBox.deploy(subId, this.vrfCoordinatorMock.address, 400000,
             "0x0000000000000000000000000000000000000000000000000000000000000000", this.card.address);
         this.magicBox = await this.magicBox.deployed();
-        await this.magicBox.setProbability(2);
+        await this.magicBox.setProbability(0x03030302);
 
         const MINTER_ROLE = await this.card.MINTER_ROLE();
         await this.card.grantRole(MINTER_ROLE, this.magicBox.address);

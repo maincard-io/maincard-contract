@@ -169,6 +169,7 @@ contract Arena is IArena, OwnableUpgradeable {
 
     function _takeCard(uint256 cardId, PredictionResult result) internal {
         address originalOwner = bets[cardId].cardOwner;
+        uint64 eventDate = uint64(eventInfos[bets[cardId].eventId].betsAcceptedUntilTs);
         delete bets[cardId];
 
         uint256 myBetCount = betsByUser[originalOwner].length;
@@ -189,7 +190,7 @@ contract Arena is IArena, OwnableUpgradeable {
             address(this),
             originalOwner,
             cardId,
-            abi.encode(result)
+            abi.encode(result, eventDate)
         );
 
         if (result == PredictionResult.Success) {

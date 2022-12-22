@@ -52,6 +52,13 @@ contract Card is
     MainToken _maintoken;
     address _auctionAddress;
 
+    struct CardInfo {
+      // Much more to be added here on refactoring: lives remaining, rarity.
+      uint8 recoveriesRemains;
+      uint64 frozenUntil;
+    }
+    mapping(uint256 => CardInfo) _cardInfos;
+
     function setArenaAddress(IArena arena) external {
         require(
             hasRole(ARENA_CHANGER_ROLE, msg.sender),
@@ -115,6 +122,7 @@ contract Card is
         _safeMint(newTokenOwner, _lastMint.current());
         _rarities[_lastMint.current()] = rarity;
         _livesRemaining[_lastMint.current()] = getDefaultLivesForNewCard(rarity);
+        _cardInfos[_lastMint.current()].recoveriesRemains < _livesRemaining[_lastMint.current()]; /* Amount of recoveries equal to amount of lives by WP */
         emit RemainingLivesChanged(_lastMint.current(), 0, _livesRemaining[_lastMint.current()]);
         _lastMint.increment();
     }
@@ -150,6 +158,7 @@ contract Card is
             _isApprovedOrOwner(_msgSender(), cardId),
             "ERC721: caller is not token owner nor approved"
         );
+        require(_cardInfos[cardId].frozenUntil <= block.timestamp, "The card is frozen");
         /*
         if (_rarities[cardId] == CardRarity.Common && !(
                 to == address(_arenaAddress) || 
@@ -164,9 +173,9 @@ contract Card is
         }
         */
         if (from == address(_arenaAddress)) {
-            IArena.PredictionResult result = abi.decode(
+            (IArena.PredictionResult result, uint64 eventDate) = abi.decode(
                 data,
-                (IArena.PredictionResult)
+                (IArena.PredictionResult, uint64)
             );
             if (result == IArena.PredictionResult.Success) {
                 _lastBetsPerformance[cardId] =
@@ -182,6 +191,7 @@ contract Card is
                 require(_livesRemaining[cardId] > 0, "Somehow card with 0 lives was used");
                 emit RemainingLivesChanged(cardId, _livesRemaining[cardId], _livesRemaining[cardId]-1);
                 _livesRemaining[cardId] -= 1;
+                _cardInfos[cardId].frozenUntil = eventDate + freezePeriod(_rarities[cardId]);
             }
         }
         if (isLessRareOrEq(getMintAllowance(to), getRarity(cardId))) {
@@ -291,6 +301,15 @@ contract Card is
         revert("Unknown rarity");
     }
 
+    function freezePeriod(CardRarity rarity) internal pure returns (uint32) {
+        if (rarity == CardRarity.Common) return 24*3600;
+        if (rarity == CardRarity.Rare) return 12*3600;
+        if (rarity == CardRarity.Epic) return 6*3600;
+        if (rarity == CardRarity.Legendary) return 3*3600;
+        if (rarity == CardRarity.Mythic) return 3600;
+        revert("Unknown rarity");
+    }
+
     function livesRemaining(uint256 cardId) external view override returns(uint256) {
         return _livesRemaining[cardId];
     }
@@ -365,8 +384,8 @@ contract Card is
     function restoreLive(uint256 cardId) external {
         // If paid in MainTokens, price x5
         uint256 cost = recoveryMaintokens(cardId);
-        _restoreLive(cardId);
         _maintoken.transferFrom(msg.sender, address(this), cost);
+        _restoreLive(cardId);
     }
 
     /* Pay with MATIC */
@@ -377,7 +396,9 @@ contract Card is
     }
 
     function _restoreLive(uint256 cardId) internal {
-        require(ownerOf(cardId) == msg.sender, "You cant restore card which is not yours");
+        require(ownerOf(cardId) == msg.sender);
+        require(_cardInfos[cardId].recoveriesRemains > 0);
+        _cardInfos[cardId].recoveriesRemains += 1;
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
         _livesRemaining[cardId] = newLives;
