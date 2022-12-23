@@ -54,7 +54,7 @@ contract Card is
 
     struct CardInfo {
       // Much more to be added here on refactoring: lives remaining, rarity.
-      uint8 recoveriesRemains;
+      uint8 recoveriesRemains; /* recoveriesDone,;actually */ 
       uint64 frozenUntil;
     }
     mapping(uint256 => CardInfo) _cardInfos;
@@ -122,7 +122,6 @@ contract Card is
         _safeMint(newTokenOwner, _lastMint.current());
         _rarities[_lastMint.current()] = rarity;
         _livesRemaining[_lastMint.current()] = getDefaultLivesForNewCard(rarity);
-        _cardInfos[_lastMint.current()].recoveriesRemains < _livesRemaining[_lastMint.current()]; /* Amount of recoveries equal to amount of lives by WP */
         emit RemainingLivesChanged(_lastMint.current(), 0, _livesRemaining[_lastMint.current()]);
         _lastMint.increment();
     }
@@ -292,7 +291,7 @@ contract Card is
         return _mintAllowances[minter];
     }
 
-    function getDefaultLivesForNewCard(CardRarity rarity) internal pure returns (uint256) {
+    function getDefaultLivesForNewCard(CardRarity rarity) internal pure returns (uint8) {
         if (rarity == CardRarity.Common) return 2;
         if (rarity == CardRarity.Rare) return 3;
         if (rarity == CardRarity.Epic) return 4;
@@ -384,6 +383,7 @@ contract Card is
     function restoreLive(uint256 cardId) external {
         // If paid in MainTokens, price x5
         uint256 cost = recoveryMaintokens(cardId);
+        require(cost > 0, "Nothing to restore");
         _maintoken.transferFrom(msg.sender, address(this), cost);
         _restoreLive(cardId);
     }
@@ -391,16 +391,21 @@ contract Card is
     /* Pay with MATIC */
     function restoreLiveMatic(uint256 cardId) external payable {
         uint256 cost = recoveryMatic(cardId);
+        require(cost > 0, "Nothing to restore");
         require(msg.value == cost, "Not enough MATIC");
         _restoreLive(cardId);
     }
 
     function _restoreLive(uint256 cardId) internal {
         require(ownerOf(cardId) == msg.sender);
-        require(_cardInfos[cardId].recoveriesRemains > 0);
-        _cardInfos[cardId].recoveriesRemains += 1;
+        require(recoveriesRemaining(cardId) > 0, "No more recoveries"); /* BY WP same values */
+        _cardInfos[cardId].recoveriesRemains /* recoveriesDone, actually */ += 1;
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
         _livesRemaining[cardId] = newLives;
+    }
+
+    function recoveriesRemaining(uint256 cardId) public view returns(uint8) {
+        return getDefaultLivesForNewCard(_rarities[cardId]) - _cardInfos[cardId].recoveriesRemains /* recoveriesDone, actually */;
     }
 }
