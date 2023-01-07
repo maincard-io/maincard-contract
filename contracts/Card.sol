@@ -54,7 +54,7 @@ contract Card is
 
     struct CardInfo {
       // Much more to be added here on refactoring: lives remaining, rarity.
-      uint8 recoveriesRemains; /* recoveriesDone,;actually */ 
+      uint8 recoveriesRemains; /* recoveriesDone, actually */ 
       uint64 frozenUntil;
     }
     mapping(uint256 => CardInfo) _cardInfos;
@@ -398,8 +398,10 @@ contract Card is
 
     function _restoreLive(uint256 cardId) internal {
         require(ownerOf(cardId) == msg.sender);
-        require(recoveriesRemaining(cardId) > 0, "No more recoveries"); /* BY WP same values */
-        _cardInfos[cardId].recoveriesRemains /* recoveriesDone, actually */ += 1;
+        require(_livesRemaining[cardId] > 0 || recoveriesRemaining(cardId) > 0, "No more recoveries"); /* BY WP same values */
+        if (_livesRemaining[cardId] == 0) {
+            _cardInfos[cardId].recoveriesRemains /* recoveriesDone, actually */ += 1;
+        }
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
         _livesRemaining[cardId] = newLives;
