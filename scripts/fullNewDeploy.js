@@ -99,6 +99,10 @@ async function main() {
 
   const grantMinterToMagicBox = await card.grantRole(MINTER_ROLE, magicBox.address);
   await grantMinterToMagicBox.wait()
+
+  const WITHDRAWER_ROLE = await card.WITHDRAWER_ROLE();
+  const grantWithdrawerTx = await card.grantRole(WITHDRAWER_ROLE, getNamedAccount("fundOwnerWallet"))
+  await grantWithdrawerTx.wait()
 }
 
 main()

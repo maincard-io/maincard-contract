@@ -2,7 +2,7 @@
   "manifestVersion": "3.2",
   "admin": {
     "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-    "txHash": "0xfdb628250c842f3c2bd5df6d288c6c464d873a10480ca8784307626ba52d763f"
+    "txHash": "0xc846dc3ef5c6e36b744a7140e165a0b8b19399bde9cbfa1de93062c369b9621c"
   },
   "proxies": [
     {
@@ -87,37 +87,37 @@
     },
     {
       "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-      "txHash": "0x18d688defdf05d2f797007b709c551f961a26f63b2dabf1fe8a657576c850721",
+      "txHash": "0x7075763674e98f2f7bc1f1efb1245e4adf2f5cdd56cdb4d48c477d381b7e8d5e",
       "kind": "transparent"
     },
     {
       "address": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-      "txHash": "0x32ee2273d8f45abf8204df9c58ece64b52ddc8955e6ec5e3064aa351f5c08d0b",
+      "txHash": "0xcc9eb2ce364240cfc1aec2212911f81f2b778bff2c3ff92fa28dc368b1b63bf0",
       "kind": "transparent"
     },
     {
       "address": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
-      "txHash": "0x2753ba2731b6a35cd0695af8b1c43c6c6947bf336e592774bd0bf3da3a885e03",
+      "txHash": "0x3e4884830e2e12f863f979f4f4157d943e0c58049db2540287227540e0141f24",
       "kind": "transparent"
     },
     {
       "address": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
-      "txHash": "0x0a706bdd74433a46cbf6e827b00bf1829c2d469c9ac58b68853fa53f8b5204e7",
+      "txHash": "0x27b7408be28fbada8f94403cc4a92101a3c4a0344990041c1c02dcb02a3df6cf",
       "kind": "transparent"
     },
     {
       "address": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
-      "txHash": "0x4ca066729f01177db83fd74a596e3b70fffb370ee0ab1a28c9e730dee4b49a67",
+      "txHash": "0xd357230ed27772bc205a48bd63e55fd74a4a23b29c40a1edec5ba92915c83d3f",
       "kind": "transparent"
     },
     {
       "address": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
-      "txHash": "0xe642ce60691987e7d31ebaf78557e18cd7f947a0418ea98f35c9b3f04da4f59c",
+      "txHash": "0x4182c4470fee78f1dec61d294545ce5897d02c291a4d31bfe42348f385306a2d",
       "kind": "transparent"
     },
     {
       "address": "0xA4899D35897033b927acFCf422bc745916139776",
-      "txHash": "0x5d69d1652a87222f4f7e423b37100a4522c5961ce572c2e406f06c4a2dd1ff9f",
+      "txHash": "0xfc26ea8eaed8a80b8bbfe75d9483a22729a6d2b1ebba92f5ededcb3decd074ca",
       "kind": "transparent"
     },
     {
@@ -510,7 +510,7 @@
     },
     "1d64f18bc6b543e1893ecd63db907de237b48ff4bffc0442973ecea25f374e71": {
       "address": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
-      "txHash": "0x9eb3bf3664c569feb440b0c458ac6e6ad435b24c6f2cc3000061d3d85ccaf5b0",
+      "txHash": "0xde0b0bf6803301160da4c7e46c24a68d29e22d27b300b0ee4551c0714fcb5182",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -688,7 +688,7 @@
     },
     "d8052bf0356b051a0dacd7661d1852b1d5ca454cf9c37d855c3672e3b849beaf": {
       "address": "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
-      "txHash": "0xfca5fa47882a566e73e39055c27de10e79ddcdca591bf9eb7c050e254785dc59",
+      "txHash": "0xcb72b17873b64c928a73f7b1313e5c4995f127053eb5baf28937c3b53fdc4956",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -976,7 +976,7 @@
     },
     "733638f7362a16d05124059480bff92f2947adae29ed5425be5cd0c676b3b362": {
       "address": "0xAA292E8611aDF267e563f334Ee42320aC96D0463",
-      "txHash": "0xf6dc4461b84351b2f30629b38a431810d06197a29519cf754112610a037f9719",
+      "txHash": "0xbd74767f4574187f8a3f15d6dc59461705897cb359b3ebd8455d764257664453",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -1041,7 +1041,7 @@
             "label": "card",
             "offset": 0,
             "slot": "103",
-            "type": "t_contract(Card)8299",
+            "type": "t_contract(Card)8341",
             "contract": "Auction",
             "src": "contracts/Auction.sol:26"
           },
@@ -1049,7 +1049,7 @@
             "label": "maintoken",
             "offset": 0,
             "slot": "104",
-            "type": "t_contract(MainToken)8817",
+            "type": "t_contract(MainToken)8859",
             "contract": "Auction",
             "src": "contracts/Auction.sol:27"
           },
@@ -1095,11 +1095,11 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(Card)8299": {
+          "t_contract(Card)8341": {
             "label": "contract Card",
             "numberOfBytes": "20"
           },
-          "t_contract(MainToken)8817": {
+          "t_contract(MainToken)8859": {
             "label": "contract MainToken",
             "numberOfBytes": "20"
           },
@@ -1186,9 +1186,9 @@
         }
       }
     },
-    "76971441fc991ce48d1cb2ec9aa8ed6b0f7ca44cf37dae3996bc9c907ee8081b": {
+    "7d12e2e315b738dfe56b036499250041e959bfd16027e15089eb78b5545fb83b": {
       "address": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-      "txHash": "0x3a0880c146ea290ca38943f5d54bfa9b86137f0794267980282488683ff99137",
+      "txHash": "0x29f89793036865c148254f0d4b82008d9bca887a557009f715b1605603c199ee",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -1341,7 +1341,7 @@
             "label": "_arenaAddress",
             "offset": 0,
             "slot": "251",
-            "type": "t_contract(IArena)8366",
+            "type": "t_contract(IArena)8408",
             "contract": "Card",
             "src": "contracts/Card.sol:25"
           },
@@ -1365,7 +1365,7 @@
             "label": "_prices",
             "offset": 0,
             "slot": "254",
-            "type": "t_mapping(t_enum(CardRarity)8377,t_uint256)",
+            "type": "t_mapping(t_enum(CardRarity)8419,t_uint256)",
             "contract": "Card",
             "src": "contracts/Card.sol:28"
           },
@@ -1373,7 +1373,7 @@
             "label": "_upgradePrices",
             "offset": 0,
             "slot": "255",
-            "type": "t_mapping(t_enum(CardRarity)8377,t_uint256)",
+            "type": "t_mapping(t_enum(CardRarity)8419,t_uint256)",
             "contract": "Card",
             "src": "contracts/Card.sol:29"
           },
@@ -1381,7 +1381,7 @@
             "label": "_rarities",
             "offset": 0,
             "slot": "256",
-            "type": "t_mapping(t_uint256,t_enum(CardRarity)8377)",
+            "type": "t_mapping(t_uint256,t_enum(CardRarity)8419)",
             "contract": "Card",
             "src": "contracts/Card.sol:30"
           },
@@ -1389,7 +1389,7 @@
             "label": "_mintAllowances",
             "offset": 0,
             "slot": "257",
-            "type": "t_mapping(t_address,t_enum(CardRarity)8377)",
+            "type": "t_mapping(t_address,t_enum(CardRarity)8419)",
             "contract": "Card",
             "src": "contracts/Card.sol:31"
           },
@@ -1413,7 +1413,7 @@
             "label": "_maintoken",
             "offset": 0,
             "slot": "260",
-            "type": "t_contract(MainToken)8817",
+            "type": "t_contract(MainToken)8859",
             "contract": "Card",
             "src": "contracts/Card.sol:52"
           },
@@ -1467,7 +1467,7 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(IArena)8366": {
+          "t_contract(IArena)8408": {
             "label": "contract IArena",
             "numberOfBytes": "20"
           },
@@ -1475,11 +1475,11 @@
             "label": "contract IERC20Upgradeable",
             "numberOfBytes": "20"
           },
-          "t_contract(MainToken)8817": {
+          "t_contract(MainToken)8859": {
             "label": "contract MainToken",
             "numberOfBytes": "20"
           },
-          "t_enum(CardRarity)8377": {
+          "t_enum(CardRarity)8419": {
             "label": "enum ICard.CardRarity",
             "members": [
               "Common",
@@ -1494,7 +1494,7 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_enum(CardRarity)8377)": {
+          "t_mapping(t_address,t_enum(CardRarity)8419)": {
             "label": "mapping(address => enum ICard.CardRarity)",
             "numberOfBytes": "32"
           },
@@ -1514,7 +1514,7 @@
             "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_enum(CardRarity)8377,t_uint256)": {
+          "t_mapping(t_enum(CardRarity)8419,t_uint256)": {
             "label": "mapping(enum ICard.CardRarity => uint256)",
             "numberOfBytes": "32"
           },
@@ -1522,7 +1522,7 @@
             "label": "mapping(uint256 => address)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_enum(CardRarity)8377)": {
+          "t_mapping(t_uint256,t_enum(CardRarity)8419)": {
             "label": "mapping(uint256 => enum ICard.CardRarity)",
             "numberOfBytes": "32"
           },
@@ -1542,7 +1542,7 @@
             "label": "struct Card.CardInfo",
             "members": [
               {
-                "label": "recoveriesDone",
+                "label": "recoveriesRemains",
                 "type": "t_uint8",
                 "offset": 0,
                 "slot": "0"

@@ -74,6 +74,9 @@ const DATA = {
       "polygon":  "2000000000000000000000",
       "mumbai":         "8000000000000000",
     },
+    "fundOwnerWallet": {
+      "polygon": "0xd154C26c6C8d62B81Cef6Ca0ef39130f4774DA03",
+    },
 };
 
 module.exports = (alias) => {

@@ -16,9 +16,9 @@ async function main() {
   const oldMagicBoxAddress = getNamedAccount("magicBox")
 
   // await upgrades.upgradeProxy(arenaProxy, Arena, {gasLimit: 800000});
-  // await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000});
+  await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000});
   // await upgrades.upgradeProxy(auctionProxy, Auction, {gasLimit: 800000});
-  // return
+  return
 
   console.log("Stopping old magic box")
   const MINTER_ROLE = await Card.attach(cardProxy).MINTER_ROLE();
