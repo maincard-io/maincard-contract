@@ -347,6 +347,11 @@ contract Card is
         require(_prices[rarity] > 0, "not buyable");
         return _prices[rarity];
     }
+    
+    function upgradePrice(CardRarity rarity) external view returns(uint256) {
+        require(_upgradePrices[rarity] > 0, "not upgradeable");
+        return _upgradePrices[rarity];
+    }
 
     function recoveryMaintokens(uint256 cardId) public view returns(uint256) {
         return recoveryMatic(cardId) * 5;
