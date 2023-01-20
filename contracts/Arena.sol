@@ -18,6 +18,7 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 eventId;
         MatchResult choice;
         address cardOwner;
+        uint256 betId;
     }
 
     struct CallInfo {
@@ -29,9 +30,11 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 secondParticipantCard;
     }
 
-    event NewBet(address user, uint256 eventId, uint256 cardId, MatchResult choiceId);
+    event NewBet(address user, uint256 eventId, uint256 cardId, MatchResult choiceId, uint256 betId, uint256 potentialRewardMaintokens);
     event NewCall(address creator, uint256 eventId, uint256 cardId, ICard.CardRarity rarity, uint256 callId, MatchResult choiceId);
     event CallAccepted(uint256 callId, address wallet, uint256 cardId);
+    event CardTakenFromBet(uint256 cardId, uint256 betId, uint256 maintokensReceived, bool takenAfterMatch);
+    event CardTakenFromCall(uint256 cardId, address taker, uint256 callId);
     // Events CallExpired/CallCompleted not needed at the moment.
 
     ICard card;
@@ -42,6 +45,7 @@ contract Arena is IArena, OwnableUpgradeable {
     MainToken maintoken;
 
     CallInfo[] public calls;
+    uint256 _betId;
 
     function initialize() public initializer {
         __Ownable_init();
@@ -120,12 +124,13 @@ contract Arena is IArena, OwnableUpgradeable {
             require(amountOfLowLevelCards == 0, "You can have only one Common or Rare card on the arena");
         }
 
-        bets[cardId] = BetInfo(eventId, choiceId, msg.sender);
+        bets[cardId] = BetInfo(eventId, choiceId, msg.sender, _betId);
         betsByUser[msg.sender].push(cardId);
         rarities[msg.sender][eventId].push(thisCardRarity);
         card.safeTransferFrom(msg.sender, address(this), cardId);
 
-        emit NewBet(msg.sender, eventId, cardId, choiceId);
+        emit NewBet(msg.sender, eventId, cardId, choiceId, _betId, card.rewardMaintokens(cardId));
+        unchecked { ++_betId; }
     }
 
     function setEventResult(uint256 eventId, MatchResult resultChoiceId)
@@ -167,8 +172,20 @@ contract Arena is IArena, OwnableUpgradeable {
         }
     }
 
+    // nothing is wrong with takeCard, it is safe actually. This method just makes it more CAS-like.
+    function takeCardSafe(uint256 cardId, uint256 betId, bool onlyIfEventCompleted) external {
+        BetInfo storage betInfo = bets[cardId];
+        require(betInfo.eventId != 0 && card.ownerOf(cardId) == address(this), "Card is not on Bet");
+        require(betInfo.betId == betId, "BetID mismatch");
+        if (onlyIfEventCompleted) {
+            require(eventInfos[betInfo.eventId].result != MatchResult.MatchIsInProgress, "Match is still in progress");
+        }
+        takeCard(cardId);
+    }
+
     function _takeCard(uint256 cardId, PredictionResult result) internal {
         address originalOwner = bets[cardId].cardOwner;
+        uint256 betId = bets[cardId].betId;
         uint64 eventDate = uint64(eventInfos[bets[cardId].eventId].betsAcceptedUntilTs);
         delete bets[cardId];
 
@@ -194,7 +211,13 @@ contract Arena is IArena, OwnableUpgradeable {
         );
 
         if (result == PredictionResult.Success) {
-            maintoken.mint(originalOwner, card.rewardMaintokens(cardId));
+            uint256 reward = card.rewardMaintokens(cardId);
+            maintoken.mint(originalOwner, reward);
+            emit CardTakenFromBet(cardId, betId, reward, true);
+        } else if (result == PredictionResult.Failure) {
+            emit CardTakenFromBet(cardId, betId, 0, true);
+        } else if (result == PredictionResult.NotApplicable) {
+            emit CardTakenFromBet(cardId, betId, 0, false);
         }
     }
 
@@ -249,9 +272,11 @@ contract Arena is IArena, OwnableUpgradeable {
             if (msg.sender == thisCall.firstParticipantAddress) {
                 thisCall.firstParticipantAddress = address(0x0);
                 card.safeTransferFrom(address(this), msg.sender, thisCall.firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
+                emit CardTakenFromCall(thisCall.firstParticipantCard, msg.sender, callId);
                 thisCall.firstParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
             } else if (msg.sender == thisCall.secondParticipantAddress) {
                 thisCall.secondParticipantAddress = address(0x0);
+                emit CardTakenFromCall(thisCall.secondParticipantCard, msg.sender, callId);
                 card.safeTransferFrom(address(this), msg.sender, thisCall.secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
                 thisCall.secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
             }
@@ -261,6 +286,8 @@ contract Arena is IArena, OwnableUpgradeable {
         ) {
             thisCall.firstParticipantAddress = address(0x0);
             thisCall.secondParticipantAddress = address(0x0);
+            emit CardTakenFromCall(thisCall.firstParticipantCard, msg.sender, callId);
+            emit CardTakenFromCall(thisCall.secondParticipantCard, msg.sender, callId);
             card.safeTransferFrom(address(this), msg.sender, thisCall.firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
             card.safeTransferFrom(address(this), msg.sender, thisCall.secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
             thisCall.firstParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
