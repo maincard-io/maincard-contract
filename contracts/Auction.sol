@@ -20,6 +20,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         uint256 cardId;
         uint256 betsAcceptedUntilTs;  // works as auction's uuid, so that if bets[cardId] has a different betsAcceptedUntilTs - it is a different auction.
         uint256 amount;
+        uint256 startingPrice;
     }
     mapping(uint256 => AuctionInfo) public bets;
     mapping(address => uint256[]) auctionsByUser;
@@ -67,7 +68,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         emit NewBet(msg.sender, cardId, amount);
 
         trimMyBets(msg.sender);
-        myBets[msg.sender].push(MyBet(cardId, thisAuction.betsAcceptedUntilTs, amount));
+        myBets[msg.sender].push(MyBet(cardId, thisAuction.betsAcceptedUntilTs, amount, thisAuction.startingPrice));
     }
 
     function takeCard(uint256 cardId) public {
@@ -93,7 +94,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         thisAuction.creator = address(0x0);
     }
 
-    function auctionsForUser(address user, uint256 offset) view public returns (uint256[10] memory cardIds, uint256[10] memory bestBets, uint256[10] memory untils) {
+    function auctionsForUser(address user, uint256 offset) view public returns (uint256[10] memory cardIds, uint256[10] memory bestBets, uint256[10] memory untils, uint256[10] memory startingPrices) {
         uint256 lastElement = offset + 10;
         if (lastElement > auctionsByUser[user].length) {
             lastElement = auctionsByUser[user].length;
@@ -103,10 +104,11 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
             cardIds[index-offset] = auctionsByUser[user][index];
             bestBets[index-offset] = bets[cardIds[index-offset]].bestBet;
             untils[index-offset] = bets[cardIds[index-offset]].betsAcceptedUntilTs;
+            startingPrices[index-offset]= bets[cardIds[index-offset]].startingPrice;
         }
     }
 
-    function betsForUser(address user, uint256 offset) view public returns (uint256[10] memory cardIds, uint256[10] memory amounts, uint256[10] memory untils) {
+    function betsForUser(address user, uint256 offset) view public returns (uint256[10] memory cardIds, uint256[10] memory amounts, uint256[10] memory untils, uint256[10] memory startingPrices) {
         uint256 lastElement = offset + 10;
         if (lastElement > myBets[user].length) {
             lastElement = myBets[user].length;
@@ -115,6 +117,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
             cardIds[index-offset] = myBets[user][index].cardId;
             amounts[index-offset] = myBets[user][index].amount;
             untils[index-offset] = myBets[user][index].betsAcceptedUntilTs;
+            startingPrices[index-offset]= myBets[user][index].startingPrice;
         }
     }
 
