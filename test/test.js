@@ -42,6 +42,17 @@ describe("Basic tests", function () {
         const mintTx = await contractAsAlice.freeMint(alice.address, Regular);
         await mintTx.wait();
     });
+    it("Alice can mint free tokens via freeMint2", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        const mintTx1 = await contractAsAlice.freeMint2(alice.address, Regular, 0);
+        await mintTx1.wait();
+        const mintTx2 = await contractAsAlice.freeMint2(alice.address, Regular, 1);
+        await mintTx2.wait();
+    });
+    it("Alice cannot mint free tokens via freeMint2 is nonce is incorrect", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        await expect(contractAsAlice.freeMint2(alice.address, Regular, 1)).to.be.reverted;
+    })
     it("Bob can not mint free tokens", async () => {
         const contractAsBob = await instance.connect(bob);
         await expect(contractAsBob.freeMint(alice.address, Regular)).to.be.reverted;

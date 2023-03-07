@@ -54,10 +54,11 @@ contract Card is
 
     struct CardInfo {
       // Much more to be added here on refactoring: lives remaining, rarity.
-      uint8 recoveriesRemains; /* recoveriesDone, actually */ 
+      uint8 recoveriesDone;
       uint64 frozenUntil;
     }
     mapping(uint256 => CardInfo) _cardInfos;
+    uint256 public _freeMintNonce;
 
     function setArenaAddress(IArena arena) external {
         require(
@@ -138,12 +139,25 @@ contract Card is
         // _acceptedCurrency.transferFrom(msg.sender, address(this), _prices[rarity]);
     }
 
-    function freeMint(address newTokenOwner, CardRarity rarity) external payable {
+    function freeMint(address newTokenOwner, CardRarity rarity) external {
+        // FreeMint should not call freeMint2, because it will increment the nonce,
+        // but nonce is stored in the database and needed as a sync between DB and blockchain.
         require(
             hasRole(MINTER_ROLE, msg.sender),
             "msg.sender should have granted MINTER_ROLE"
         );
         require(rarity != CardRarity.Mythic, "Mythic cards are not buyable");
+        _mint(newTokenOwner, rarity);
+    }
+
+    function freeMint2(address newTokenOwner, CardRarity rarity, uint256 freeMintNonce) external {
+        require(
+            hasRole(MINTER_ROLE, msg.sender),
+            "msg.sender should have granted MINTER_ROLE"
+        );
+        require(rarity != CardRarity.Mythic, "Mythic cards are not buyable");
+        require(freeMintNonce == _freeMintNonce, "Nonce is not correct");
+        _freeMintNonce++;
         _mint(newTokenOwner, rarity);
     }
 
@@ -204,7 +218,9 @@ contract Card is
             hasRole(WITHDRAWER_ROLE, msg.sender),
             "msg.sender should have granted WITHDRAWER_ROLE"
         );
-        payable(msg.sender).transfer(address(this).balance);
+        (bool sent, /* memory data */) = payable(msg.sender).call{value: address(this).balance}("");
+        require(sent, "Failed to send Matic");
+        // payable(msg.sender).transfer(address(this).balance);
         // _acceptedCurrency.transfer(msg.sender, _acceptedCurrency.balanceOf(msg.sender));
     }
 
@@ -405,7 +421,7 @@ contract Card is
         require(ownerOf(cardId) == msg.sender);
         require(_livesRemaining[cardId] > 0 || recoveriesRemaining(cardId) > 0, "No more recoveries"); /* BY WP same values */
         if (_livesRemaining[cardId] == 0) {
-            _cardInfos[cardId].recoveriesRemains /* recoveriesDone, actually */ += 1;
+            _cardInfos[cardId].recoveriesDone += 1;
         }
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
@@ -413,6 +429,6 @@ contract Card is
     }
 
     function recoveriesRemaining(uint256 cardId) public view returns(uint8) {
-        return getDefaultLivesForNewCard(_rarities[cardId]) - _cardInfos[cardId].recoveriesRemains /* recoveriesDone, actually */;
+        return getDefaultLivesForNewCard(_rarities[cardId]) - _cardInfos[cardId].recoveriesDone;
     }
 }

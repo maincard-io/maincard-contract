@@ -15,7 +15,7 @@ const DATA = {
     },
     magicBox: {
       "mumbai": "0xdD5B3Fc8cc441dAce60eacC20261Cdd4e676140e",
-      "polygon": "0xa545D7052a6472Ce97b6Be3ECb8Ea3B7c4950F03",
+      "polygon": "0x814d3acdc58bbacc3712cad9961a89a903016f2e",
     },
     auctionProxy: {
       "mumbai": "0xE2A8C31727b29697b5f2309424C2d8ADE43C9dfe",
