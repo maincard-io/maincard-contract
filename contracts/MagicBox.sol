@@ -78,7 +78,8 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
                                         Strings.toString(msg.value),
                                         " vs. ",
                                         Strings.toString(boxPrice))));
-        (bool sent, /* memory data */) = payable(msg.sender).call{value: msg.value}("");
+        (bool sent, /* memory data */) = payable(address(_card)).call{value: msg.value}("");
+        //_card.transfer(msg.value);
         require(sent, "Failed to send Matic");
         uint256 requestId = COORDINATOR.requestRandomWords(
             s_keyHash,

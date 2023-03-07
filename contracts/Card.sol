@@ -431,4 +431,6 @@ contract Card is
     function recoveriesRemaining(uint256 cardId) public view returns(uint8) {
         return getDefaultLivesForNewCard(_rarities[cardId]) - _cardInfos[cardId].recoveriesDone;
     }
+
+    receive() external payable {}
 }
