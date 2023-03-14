@@ -213,6 +213,10 @@ contract Card is
         _safeTransfer(from, to, cardId, data);
     }
 
+    function unsetFreeze(uint256 cardId) external {
+        _cardInfos[cardId].frozenUntil = 0;
+    }
+
     function withdraw() external {
         require(
             hasRole(WITHDRAWER_ROLE, msg.sender),
