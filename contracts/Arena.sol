@@ -46,6 +46,7 @@ contract Arena is IArena, OwnableUpgradeable {
 
     CallInfo[] public calls;
     uint256 _betId;
+    mapping(address => uint256[]) public callsByUser;  // user->index->cardId
 
     function initialize() public initializer {
         __Ownable_init();
@@ -246,6 +247,7 @@ contract Arena is IArena, OwnableUpgradeable {
         _validateBet(eventId, cardId, choiceId);
         calls.push(CallInfo(eventId, choiceId, msg.sender, cardId, address(0x0), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff));
         card.safeTransferFrom(msg.sender, address(this), cardId);
+        callsByUser[msg.sender].push(calls.length - 1);
         emit NewCall(msg.sender, eventId, cardId, card.getRarity(cardId), calls.length - 1, choiceId);
     }
 
@@ -257,6 +259,7 @@ contract Arena is IArena, OwnableUpgradeable {
         thisCall.secondParticipantAddress = msg.sender;
         thisCall.secondParticipantCard = cardId;
         card.safeTransferFrom(msg.sender, address(this), cardId);
+        callsByUser[msg.sender].push(callId);
         emit CallAccepted(callId, msg.sender, cardId);
     }
 
@@ -268,33 +271,60 @@ contract Arena is IArena, OwnableUpgradeable {
 
     function claimCall(uint256 callId) public {
         CallInfo storage thisCall = calls[callId];
+        _removeCallFromUser(thisCall.firstParticipantAddress, callId);
+        if (thisCall.secondParticipantAddress != address(0x0)) {
+            _removeCallFromUser(thisCall.secondParticipantAddress, callId);
+        }
+        address firstParticipantAddress = thisCall.firstParticipantAddress;
+        thisCall.firstParticipantAddress = address(0x0);
+        uint256 firstParticipantCard = thisCall.firstParticipantCard;
+        thisCall.firstParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        address secondParticipantAddress = thisCall.secondParticipantAddress;
+        thisCall.secondParticipantAddress = address(0x0);
+        uint256 secondParticipantCard = thisCall.secondParticipantCard;
+        thisCall.secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+
         if (eventInfos[thisCall.eventId].result == MatchResult.Draw || eventInfos[thisCall.eventId].result == MatchResult.MatchCancelled || thisCall.secondParticipantAddress == address(0x0)) {
-            if (msg.sender == thisCall.firstParticipantAddress) {
-                thisCall.firstParticipantAddress = address(0x0);
-                card.safeTransferFrom(address(this), msg.sender, thisCall.firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
-                emit CardTakenFromCall(thisCall.firstParticipantCard, msg.sender, callId);
-                thisCall.firstParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-            } else if (msg.sender == thisCall.secondParticipantAddress) {
-                thisCall.secondParticipantAddress = address(0x0);
-                emit CardTakenFromCall(thisCall.secondParticipantCard, msg.sender, callId);
-                card.safeTransferFrom(address(this), msg.sender, thisCall.secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
-                thisCall.secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+            emit CardTakenFromCall(firstParticipantCard, firstParticipantAddress, callId);
+            card.safeTransferFrom(address(this), firstParticipantAddress, firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
+
+            if (secondParticipantAddress != address(0x0)) {
+                emit CardTakenFromCall(secondParticipantCard, secondParticipantAddress, callId);
+                card.safeTransferFrom(address(this), secondParticipantAddress, secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
             }
         } else if (
-            (eventInfos[thisCall.eventId].result == thisCall.choice && msg.sender == thisCall.firstParticipantAddress) ||
-            (eventInfos[thisCall.eventId].result == invertChoice(thisCall.choice) && msg.sender == thisCall.secondParticipantAddress)
+            (eventInfos[thisCall.eventId].result == thisCall.choice) ||
+            (eventInfos[thisCall.eventId].result == invertChoice(thisCall.choice))
         ) {
-            thisCall.firstParticipantAddress = address(0x0);
-            thisCall.secondParticipantAddress = address(0x0);
-            emit CardTakenFromCall(thisCall.firstParticipantCard, msg.sender, callId);
-            emit CardTakenFromCall(thisCall.secondParticipantCard, msg.sender, callId);
-            card.safeTransferFrom(address(this), msg.sender, thisCall.firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
-            card.safeTransferFrom(address(this), msg.sender, thisCall.secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
-            thisCall.firstParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-            thisCall.secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+            address winner = (eventInfos[thisCall.eventId].result == thisCall.choice) ? firstParticipantAddress : secondParticipantAddress;
+            emit CardTakenFromCall(firstParticipantCard, winner, callId);
+            emit CardTakenFromCall(secondParticipantCard, winner, callId);
+            card.safeTransferFrom(address(this), winner, firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
+            card.safeTransferFrom(address(this), winner, secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
         } else {
             revert("Call is not claimable");
         }
+    }
+
+    function _removeCallFromUser(address user, uint256 callId) internal {
+        uint256[] storage userCalls = callsByUser[user];
+        for (uint256 i = 0; i < userCalls.length; ++i) {
+            if (userCalls[i] == callId) {
+                userCalls[i] = userCalls[userCalls.length - 1];
+                userCalls.pop();
+                return;
+            }
+        }
+        revert("Call not found");
+    }
+
+    function getMyCallCards(address user) public view returns (uint256[] memory) {
+        uint256[] storage userCalls = callsByUser[user];
+        uint256[] memory cardIds = new uint256[](userCalls.length);
+        for (uint256 i = 0; i < userCalls.length; ++i) {
+            cardIds[i] = calls[userCalls[i]].firstParticipantAddress == user ? calls[userCalls[i]].firstParticipantCard : calls[userCalls[i]].secondParticipantCard;
+        }
+        return cardIds;
     }
 
     function onERC721Received(
