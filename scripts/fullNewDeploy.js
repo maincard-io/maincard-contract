@@ -9,12 +9,14 @@ async function main() {
   const cardProxy = getNamedAccount("cardProxy")
   const arenaProxy = getNamedAccount("arenaProxy")
   const auctionProxy = getNamedAccount("auctionProxy")
+  const maticAuctionProxy = "0x0"
 
   const CARD_DEPLOYED = true;
   const ARENA_DEPLOYED = true;
   const AUCTION_DEPLOYED = true;
   const MAINTOKEN_DEPOYED = true;
-  const MAGICBOX_DEPLOYED = false;
+  const MAGICBOX_DEPLOYED = true;
+  const MATIC_AUCTION_DEPLOYED = false;
 
   const Card = await ethers.getContractFactory("Card");
   const card = await (!CARD_DEPLOYED ? upgrades.deployProxy(Card) : Card.attach(cardProxy));
@@ -31,7 +33,7 @@ async function main() {
   await maintoken.deployed();
   console.log("MainToken deployed to:", maintoken.address);
 
-  const Auction = await ethers.getContractFactory("Auction");
+  const Auction = await ethers.getContractFactory("MaintokenAuction");
   const auction = await (!AUCTION_DEPLOYED ? upgrades.deployProxy(Auction) : Auction.attach(auctionProxy));
   await auction.deployed();
   console.log("Auction deployed to:", auction.address);
@@ -46,6 +48,13 @@ async function main() {
                           MagicBox.attach(getNamedAccount("magicBox")));
   await magicBox.deployed();
   console.log("MagicBox deployed to:", magicBox.address);
+
+  const MaticAuction = await ethers.getContractFactory("MaticAuction")
+  const maticauction = await (!MATIC_AUCTION_DEPLOYED ? upgrades.deployProxy(MaticAuction) : MaticAuction.attach(maticAuctionProxy))
+  await maticauction.deployed()
+  console.log("MaticAuction deployed to:", maticauction.address);
+
+  /*
 
   const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
   const grantPriceManagerRoleTx = await card.grantRole(PRICE_MANAGER_ROLE, admin.address);
@@ -103,6 +112,12 @@ async function main() {
   const WITHDRAWER_ROLE = await card.WITHDRAWER_ROLE();
   const grantWithdrawerTx = await card.grantRole(WITHDRAWER_ROLE, getNamedAccount("fundOwnerWallet"))
   await grantWithdrawerTx.wait()
+  */
+
+  const setCardForMaticAuctionTx = await maticauction.setCardAddress(card.address);
+  await setCardForMaticAuctionTx.wait()
+  const setMaticAuctionCommission = await maticauction.setCommission(5)
+  await setMaticAuctionCommission.wait()
 }
 
 main()

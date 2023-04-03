@@ -21,6 +21,9 @@ const DATA = {
       "mumbai": "0xE2A8C31727b29697b5f2309424C2d8ADE43C9dfe",
       "polygon": "0x36C729Ac4612F0CF156004D683Cf380936BC0953",
     },
+    maticAuctionProxy: {
+      "polygon": "0xCF6d770210C1efcf9E9Ad7584ECFCD47214F0406",
+    },
     arenaProxy: {
       "mumbai": "0x69E91f33424a211A0B70e879169A0b2684ce2829",
       "polygon": "0x24c6f0C81Cc8E6fc9348Fb3ab5338F903A5B7959",
@@ -39,7 +42,7 @@ const DATA = {
     },
     mainToken: {
       "mumbai": "0x6f6F075D646336b9f59a4c7204bDaf75EaE266bE",
-      "polygon": "0xB223211bF9Abb0AC8a604EE8946542eBc9972552",
+      "polygon": "0x13b02f35bf9a69ab2d26b7f229ecca3327b5bb53",
     },
 
     tokenPrice0: {

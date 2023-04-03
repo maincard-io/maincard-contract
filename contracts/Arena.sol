@@ -102,8 +102,8 @@ contract Arena is IArena, OwnableUpgradeable {
             "You can not bet with a card with 0 lives remaining"
         );
         require(
-            choiceId == MatchResult.FirstWon || choiceId == MatchResult.SecondWon,
-            "You can only bet on winning of one team"
+            choiceId == MatchResult.FirstWon || choiceId == MatchResult.Draw || choiceId == MatchResult.SecondWon,
+            "Wrong choice"
         );
     }
 
@@ -132,6 +132,13 @@ contract Arena is IArena, OwnableUpgradeable {
 
         emit NewBet(msg.sender, eventId, cardId, choiceId, _betId, card.rewardMaintokens(cardId));
         unchecked { ++_betId; }
+    }
+
+    function massMakeBet(uint256[] calldata eventId, uint256[] calldata cardId, MatchResult[] calldata choiceId) external {
+        require(eventId.length == cardId.length && cardId.length == choiceId.length, "bl");
+        for (uint256 i = 0; i < eventId.length; ++i) {
+            makeBet(eventId[i], cardId[i], choiceId[i]);
+        }
     }
 
     function setEventResult(uint256 eventId, MatchResult resultChoiceId)
@@ -225,26 +232,43 @@ contract Arena is IArena, OwnableUpgradeable {
     function betsByAddressCount(address owner) external view returns (uint256) {
         return betsByUser[owner].length;
     }
-    function betsByAddressAndIndex(address owner, uint256 offset) external view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory) {
+
+    function _betsByAddressAndIndex(uint256[] storage source, uint256 offset) internal view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
         BetInfo[10] memory usersBets;
         uint256[10] memory cardIds;
         MatchResult[10] memory results;
+        uint256[10] memory betsAcceptedUntils;
 	    uint256 lastIndex = offset + 10;
-        if (lastIndex > betsByUser[owner].length) {
-            lastIndex = betsByUser[owner].length;
+        if (lastIndex > source.length) {
+            lastIndex = source.length;
         }
         for (uint256 i = offset; i < lastIndex; ++i) {
-            cardIds[i-offset] = betsByUser[owner][i];
+            cardIds[i-offset] = source[i];
             usersBets[i-offset] = bets[cardIds[i-offset]];
             results[i-offset] = eventInfos[usersBets[i-offset].eventId].result;
+            betsAcceptedUntils[i-offset] = eventInfos[usersBets[i-offset].eventId].betsAcceptedUntilTs;
         }
-        return (usersBets, cardIds, results);
+        return (usersBets, cardIds, results, betsAcceptedUntils);
+    }
+    function betsByAddressAndIndex(address owner, uint256 offset) external view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
+        return _betsByAddressAndIndex(betsByUser[owner], offset);
+    }
+    function callsByAddressAndIndex(address owner, uint256 offset) external view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
+        return _betsByAddressAndIndex(callsByUser[owner], offset);
+    }
+
+    function _validateCall(uint256 eventId, uint256 cardId, MatchResult choiceId) internal view {
+        require(
+            choiceId == MatchResult.FirstWon || choiceId == MatchResult.SecondWon,
+            "You can only bet on winning of one team"
+        );
+        _validateBet(eventId, cardId, choiceId);
     }
 
     function createCall(uint256 eventId, uint256 cardId, MatchResult choiceId) public {
         // Here is important to understand that the card could be approved by client to be used
         // in Arena contract. But we don't want anyone to be able to put someone else's card to a call.
-        _validateBet(eventId, cardId, choiceId);
+        _validateCall(eventId, cardId, choiceId);
         calls.push(CallInfo(eventId, choiceId, msg.sender, cardId, address(0x0), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff));
         card.safeTransferFrom(msg.sender, address(this), cardId);
         callsByUser[msg.sender].push(calls.length - 1);
@@ -253,7 +277,7 @@ contract Arena is IArena, OwnableUpgradeable {
 
     function acceptCall(uint256 callId, uint256 cardId) public {
         CallInfo storage thisCall = calls[callId];
-        _validateBet(thisCall.eventId, cardId, thisCall.choice);
+        _validateCall(thisCall.eventId, cardId, thisCall.choice);
         require(thisCall.firstParticipantAddress != address(0x0) && thisCall.secondParticipantAddress == address(0x0), "Call does not exist or accepted");
         require(card.getRarity(cardId) == card.getRarity(thisCall.firstParticipantCard), "Call should have same cards");
         thisCall.secondParticipantAddress = msg.sender;

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradea
 import "./Card.sol";
 import "./MainToken.sol";
 
-contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
+abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUpgradeable {
     event NewBet(address bettor, uint256 cardId, uint256 amount);
 
     struct AuctionInfo {
@@ -25,19 +25,20 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
     mapping(uint256 => AuctionInfo) public bets;
     mapping(address => uint256[]) auctionsByUser;
     Card card;
-    MainToken maintoken;
+
     mapping(address => MyBet[]) myBets;
     uint8 _commission;
 
-    function initialize() public initializer {
-        __Ownable_init();
+    function __AuctionCore_init() internal onlyInitializing {
+        __Ownable_init_unchained();
+        __AuctionCore_init_unchained();
+    }
+
+    function __AuctionCore_init_unchained() internal onlyInitializing {
     }
 
     function setCardAddress(Card _card) external onlyOwner {
         card = _card;
-    }
-    function setMaintokenAddress(MainToken _maintoken) external onlyOwner {
-        maintoken = _maintoken;
     }
     function setCommission(uint8 commission) external onlyOwner {
         _commission = commission;
@@ -54,14 +55,18 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         auctionsByUser[msg.sender].push(cardId);
     }
 
-    function placeBet(uint256 cardId, uint256 amount) public {
+    function _takePayment(uint256 amount, address spender) internal virtual;
+    function _sendPayment(uint256 amount, address receiver) internal virtual;
+    function _withdraw() internal virtual;
+
+    function placeBet(uint256 cardId, uint256 amount) payable public {
         AuctionInfo storage thisAuction = bets[cardId];
         require(block.timestamp <= thisAuction.betsAcceptedUntilTs, "TooLate");
         require(amount > thisAuction.startingPrice && amount > thisAuction.bestBet, "TooFew");
         if (thisAuction.bestBettor != address(0x0)) {
-            require(maintoken.transfer(thisAuction.bestBettor, thisAuction.bestBet));
+            _sendPayment(thisAuction.bestBet, thisAuction.bestBettor);
         }
-        require(maintoken.transferFrom(msg.sender, address(this), amount));
+        _takePayment(amount, msg.sender);
         thisAuction.bestBet = amount;
         thisAuction.bestBettor = msg.sender;
 
@@ -87,7 +92,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         auctionsByUser[thisAuction.creator].pop();
 
         card.safeTransferFrom(address(this), receiver, cardId);
-        require(maintoken.transfer(thisAuction.creator, thisAuction.bestBet * (100 - _commission) / 100));
+        _sendPayment(thisAuction.bestBet * (100 - _commission) / 100, thisAuction.creator);
         thisAuction.bestBet = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         thisAuction.startingPrice = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         thisAuction.bestBettor = address(0x0);
@@ -133,6 +138,10 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         }
     }
 
+    function withdraw() onlyOwner public {
+        _withdraw();
+    }
+
     function onERC721Received(
         address,
         address,
@@ -143,5 +152,53 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
              bytes4(
                 keccak256("onERC721Received(address,address,uint256,bytes)")
              );
+    }
+
+    uint256[49] private __gap;
+}
+
+
+contract MaintokenAuction is AuctionCoreUpgdaeable {
+    MainToken maintoken;
+
+    function initialize() initializer external {
+        __AuctionCore_init();
+    }
+
+    function setMaintokenAddress(MainToken _maintoken) external onlyOwner {
+        maintoken = _maintoken;
+    }
+
+    function _takePayment(uint256 amount, address spender) internal override {
+        require(msg.value == 0, "Maincard auction does not need MATIC");
+        require(maintoken.transferFrom(spender, address(this), amount));
+    }
+
+    function _sendPayment(uint256 amount, address receiver) internal override {
+        require(maintoken.transfer(receiver, amount));
+    }
+
+    function _withdraw() internal override {
+        _sendPayment(maintoken.balanceOf(address(this)), owner());
+    }
+}
+
+
+contract MaticAuction is AuctionCoreUpgdaeable {
+    function initialize() initializer external {
+        __AuctionCore_init();
+    }
+
+    function _takePayment(uint256 amount, address /* spender */) internal override {
+        require(msg.value == amount, "Not enough MATIC");
+    }
+
+    function _sendPayment(uint256 amount, address receiver) internal override {
+        (bool sent, /* memory data */) = payable(receiver).call{value: amount}("");
+        require(sent, "Failed to send Matic");
+    }
+
+    function _withdraw() internal override {
+        _sendPayment(address(this).balance, owner());
     }
 }

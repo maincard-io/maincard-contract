@@ -436,5 +436,11 @@ contract Card is
         return getDefaultLivesForNewCard(_rarities[cardId]) - _cardInfos[cardId].recoveriesDone;
     }
 
+    function massApprove(address where, uint256[] calldata cardIds) external {
+        for (uint256 i = 0; i < cardIds.length; ++i) {
+            approve(where, cardIds[i]);
+        }
+    }
+
     receive() external payable {}
 }
