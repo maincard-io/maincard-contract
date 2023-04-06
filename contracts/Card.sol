@@ -338,21 +338,21 @@ contract Card is
         CardRarity rarity = _rarities[cardId];
         uint256 multiplier = uint256(10)**(_maintoken.decimals());
         if (rarity == CardRarity.Common) {
-            uint8[3] memory t = [0, 3, 5];
+            uint8[3] memory t = [0, 1, 3];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Rare) {
-            uint8[4] memory t = [0, 10, 20, 30];
+            uint8[4] memory t = [0, 5, 10, 15];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Epic) {
-            uint8[5] memory t = [0, 25, 50, 100, 150];
+            uint8[5] memory t = [0, 10, 25, 50, 75];
             return t[curLivesRemaining] * multiplier;
         }
         return curLivesRemaining * 100 * multiplier;
         /*
         if (rarity == CardRarity.Legendary) {
-            uint256[6] memory t = [0, 100, 200, 300, 400, 500];
+            uint256[6] memory t = [0, 50, 100, 150, 225, 300];
             return t[livesRemaining];
         }
         if (rarity == CardRarity.Mythic) {
@@ -382,23 +382,23 @@ contract Card is
         CardRarity rarity = _rarities[cardId];
         uint256 multiplier = 10**(_maintoken.decimals());
         if (rarity == CardRarity.Common) {
-            uint8[3] memory t = [2, 1, 0];
+            uint8[3] memory t = [10, 5, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Rare) {
-            uint8[4] memory t = [20, 10, 5, 0];
+            uint8[4] memory t = [100, 50, 25, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Epic) {
-            uint8[5] memory t = [50, 40, 30, 20, 0];
+            uint8[5] memory t = [300, 250, 200, 150, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Legendary) {
-            uint8[6] memory t = [175, 150, 125, 100, 75, 0];
+            uint8[6] memory t = [1150, 1000, 850, 700, 550, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Mythic) {
-            uint16[11] memory t = [550, 500, 450, 400, 350, 300, 250, 200, 150, 100, 0];
+            uint16[11] memory t = [6500, 6000, 5500, 5000, 4500, 4000, 3500, 3000, 2500, 2000, 0];
             return t[curLivesRemaining] * multiplier;
         }
         revert("Unknown rarity");
