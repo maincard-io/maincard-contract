@@ -57,7 +57,7 @@ contract Card is
       uint8 recoveriesDone;
       uint64 frozenUntil;
     }
-    mapping(uint256 => CardInfo) _cardInfos;
+    mapping(uint256 => CardInfo) public _cardInfos;
     uint256 public _freeMintNonce;
 
     function setArenaAddress(IArena arena) external {

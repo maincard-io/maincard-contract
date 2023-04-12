@@ -9847,7 +9847,7 @@
             "label": "card",
             "offset": 0,
             "slot": "101",
-            "type": "t_contract(ICard)11743",
+            "type": "t_contract(ICard)5071",
             "contract": "Arena",
             "src": "contracts/Arena.sol:40"
           },
@@ -9855,7 +9855,7 @@
             "label": "eventInfos",
             "offset": 0,
             "slot": "102",
-            "type": "t_mapping(t_uint256,t_struct(EventInfo)6945_storage)",
+            "type": "t_mapping(t_uint256,t_struct(EventInfo)2982_storage)",
             "contract": "Arena",
             "src": "contracts/Arena.sol:41"
           },
@@ -9863,7 +9863,7 @@
             "label": "bets",
             "offset": 0,
             "slot": "103",
-            "type": "t_mapping(t_uint256,t_struct(BetInfo)6955_storage)",
+            "type": "t_mapping(t_uint256,t_struct(BetInfo)2992_storage)",
             "contract": "Arena",
             "src": "contracts/Arena.sol:42"
           },
@@ -9879,7 +9879,7 @@
             "label": "rarities",
             "offset": 0,
             "slot": "105",
-            "type": "t_mapping(t_address,t_mapping(t_uint256,t_array(t_enum(CardRarity)11713)dyn_storage))",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_array(t_enum(CardRarity)5041)dyn_storage))",
             "contract": "Arena",
             "src": "contracts/Arena.sol:44"
           },
@@ -9887,7 +9887,7 @@
             "label": "maintoken",
             "offset": 0,
             "slot": "106",
-            "type": "t_contract(MainToken)12174",
+            "type": "t_contract(MainToken)5127",
             "contract": "Arena",
             "src": "contracts/Arena.sol:45"
           },
@@ -9895,7 +9895,7 @@
             "label": "calls",
             "offset": 0,
             "slot": "107",
-            "type": "t_array(t_struct(CallInfo)6969_storage)dyn_storage",
+            "type": "t_array(t_struct(CallInfo)3006_storage)dyn_storage",
             "contract": "Arena",
             "src": "contracts/Arena.sol:47"
           },
@@ -9921,11 +9921,11 @@
             "label": "address",
             "numberOfBytes": "20"
           },
-          "t_array(t_enum(CardRarity)11713)dyn_storage": {
+          "t_array(t_enum(CardRarity)5041)dyn_storage": {
             "label": "enum ICard.CardRarity[]",
             "numberOfBytes": "32"
           },
-          "t_array(t_struct(CallInfo)6969_storage)dyn_storage": {
+          "t_array(t_struct(CallInfo)3006_storage)dyn_storage": {
             "label": "struct Arena.CallInfo[]",
             "numberOfBytes": "32"
           },
@@ -9949,15 +9949,15 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(ICard)11743": {
+          "t_contract(ICard)5071": {
             "label": "contract ICard",
             "numberOfBytes": "20"
           },
-          "t_contract(MainToken)12174": {
+          "t_contract(MainToken)5127": {
             "label": "contract MainToken",
             "numberOfBytes": "20"
           },
-          "t_enum(CardRarity)11713": {
+          "t_enum(CardRarity)5041": {
             "label": "enum ICard.CardRarity",
             "members": [
               "Common",
@@ -9968,7 +9968,7 @@
             ],
             "numberOfBytes": "1"
           },
-          "t_enum(MatchResult)11643": {
+          "t_enum(MatchResult)4971": {
             "label": "enum IArena.MatchResult",
             "members": [
               "MatchIsInProgress",
@@ -9983,23 +9983,23 @@
             "label": "mapping(address => uint256[])",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_mapping(t_uint256,t_array(t_enum(CardRarity)11713)dyn_storage))": {
+          "t_mapping(t_address,t_mapping(t_uint256,t_array(t_enum(CardRarity)5041)dyn_storage))": {
             "label": "mapping(address => mapping(uint256 => enum ICard.CardRarity[]))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_array(t_enum(CardRarity)11713)dyn_storage)": {
+          "t_mapping(t_uint256,t_array(t_enum(CardRarity)5041)dyn_storage)": {
             "label": "mapping(uint256 => enum ICard.CardRarity[])",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(BetInfo)6955_storage)": {
+          "t_mapping(t_uint256,t_struct(BetInfo)2992_storage)": {
             "label": "mapping(uint256 => struct Arena.BetInfo)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(EventInfo)6945_storage)": {
+          "t_mapping(t_uint256,t_struct(EventInfo)2982_storage)": {
             "label": "mapping(uint256 => struct Arena.EventInfo)",
             "numberOfBytes": "32"
           },
-          "t_struct(BetInfo)6955_storage": {
+          "t_struct(BetInfo)2992_storage": {
             "label": "struct Arena.BetInfo",
             "members": [
               {
@@ -10010,7 +10010,7 @@
               },
               {
                 "label": "choice",
-                "type": "t_enum(MatchResult)11643",
+                "type": "t_enum(MatchResult)4971",
                 "offset": 0,
                 "slot": "1"
               },
@@ -10029,7 +10029,7 @@
             ],
             "numberOfBytes": "96"
           },
-          "t_struct(CallInfo)6969_storage": {
+          "t_struct(CallInfo)3006_storage": {
             "label": "struct Arena.CallInfo",
             "members": [
               {
@@ -10040,7 +10040,7 @@
               },
               {
                 "label": "choice",
-                "type": "t_enum(MatchResult)11643",
+                "type": "t_enum(MatchResult)4971",
                 "offset": 0,
                 "slot": "1"
               },
@@ -10071,7 +10071,7 @@
             ],
             "numberOfBytes": "160"
           },
-          "t_struct(EventInfo)6945_storage": {
+          "t_struct(EventInfo)2982_storage": {
             "label": "struct Arena.EventInfo",
             "members": [
               {
@@ -10088,7 +10088,7 @@
               },
               {
                 "label": "result",
-                "type": "t_enum(MatchResult)11643",
+                "type": "t_enum(MatchResult)4971",
                 "offset": 0,
                 "slot": "2"
               }
