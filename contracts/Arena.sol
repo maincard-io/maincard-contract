@@ -150,11 +150,12 @@ contract Arena is IArena, OwnableUpgradeable {
     }
 
     function takeCard(uint256 cardId) public override {
-        uint256 eventId = bets[cardId].eventId;
         address originalOwner = bets[cardId].cardOwner;
+        uint256 eventId = bets[cardId].eventId;
         MatchResult matchResult = eventInfos[eventId].result;
         if (block.timestamp <= eventInfos[eventId].betsAcceptedUntilTs) {
             // taking before the match begins.
+            require(originalOwner == msg.sender, "Not Yours");
             _takeCard(cardId, PredictionResult.NotApplicable);
             for (uint32 i = 0; i < rarities[originalOwner][eventId].length - 1; ++i) {
                 ICard.CardRarity rarity = rarities[originalOwner][eventId][i];
@@ -177,6 +178,14 @@ contract Arena is IArena, OwnableUpgradeable {
             );
         } else {
             revert("Match is in progress");
+        }
+    }
+
+    function massTakeCard(uint256 eventId, uint256[] calldata cardIds) external {
+        for (uint256 i = 0; i < cardIds.length; ++i) {
+            BetInfo storage betInfo = bets[cardIds[i]];
+            require (betInfo.eventId == eventId, "EventID mismatch");
+            takeCard(cardIds[i]);
         }
     }
 
@@ -232,29 +241,47 @@ contract Arena is IArena, OwnableUpgradeable {
     function betsByAddressCount(address owner) external view returns (uint256) {
         return betsByUser[owner].length;
     }
-
-    function _betsByAddressAndIndex(uint256[] storage source, uint256 offset) internal view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
+    function betsByAddressAndIndex(address owner, uint256 offset) external view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
         BetInfo[10] memory usersBets;
         uint256[10] memory cardIds;
         MatchResult[10] memory results;
         uint256[10] memory betsAcceptedUntils;
 	    uint256 lastIndex = offset + 10;
-        if (lastIndex > source.length) {
-            lastIndex = source.length;
+        if (lastIndex > betsByUser[owner].length) {
+            lastIndex = betsByUser[owner].length;
         }
         for (uint256 i = offset; i < lastIndex; ++i) {
-            cardIds[i-offset] = source[i];
+            cardIds[i-offset] = betsByUser[owner][i];
             usersBets[i-offset] = bets[cardIds[i-offset]];
             results[i-offset] = eventInfos[usersBets[i-offset].eventId].result;
             betsAcceptedUntils[i-offset] = eventInfos[usersBets[i-offset].eventId].betsAcceptedUntilTs;
         }
         return (usersBets, cardIds, results, betsAcceptedUntils);
     }
-    function betsByAddressAndIndex(address owner, uint256 offset) external view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
-        return _betsByAddressAndIndex(betsByUser[owner], offset);
+
+    function callsByAddressCount(address owner) external view returns (uint256) {
+        return callsByUser[owner].length;
     }
-    function callsByAddressAndIndex(address owner, uint256 offset) external view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
-        return _betsByAddressAndIndex(callsByUser[owner], offset);
+    function callsByAddressAndIndex(address owner, uint256 offset) external view returns (uint256[10] memory, uint256[10] memory, MatchResult[10] memory, MatchResult[10] memory) {
+        uint256[10] memory cardIds;
+        uint256[10] memory eventIds;
+        MatchResult[10] memory choices;
+        MatchResult[10] memory results;
+	    uint256 lastIndex = offset + 10;
+        if (lastIndex > callsByUser[owner].length) {
+            lastIndex = callsByUser[owner].length;
+        }
+        for (uint256 i = offset; i < lastIndex; ++i) {
+            cardIds[i-offset] = callsByUser[owner][i];
+            eventIds[i-offset] = calls[cardIds[i-offset]].eventId;
+            choices[i-offset] = 
+                (calls[cardIds[i-offset]].firstParticipantAddress == owner && 
+                    calls[cardIds[i-offset]].firstParticipantCard == cardIds[i-offset])
+                ? calls[cardIds[i-offset]].choice
+                : invertChoice(calls[cardIds[i-offset]].choice);
+            results[i-offset] = eventInfos[eventIds[i-offset]].result;
+        }
+        return (cardIds, eventIds, choices, results);
     }
 
     function _validateCall(uint256 eventId, uint256 cardId, MatchResult choiceId) internal view {
