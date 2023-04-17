@@ -292,7 +292,7 @@ contract Arena is IArena, OwnableUpgradeable {
         _validateBet(eventId, cardId, choiceId);
     }
 
-    function createCall(uint256 eventId, uint256 cardId, MatchResult choiceId) public {
+    function createCall(uint256 eventId, uint256 cardId, MatchResult choiceId) external {
         // Here is important to understand that the card could be approved by client to be used
         // in Arena contract. But we don't want anyone to be able to put someone else's card to a call.
         _validateCall(eventId, cardId, choiceId);
@@ -312,6 +312,12 @@ contract Arena is IArena, OwnableUpgradeable {
         card.safeTransferFrom(msg.sender, address(this), cardId);
         callsByUser[msg.sender].push(callId);
         emit CallAccepted(callId, msg.sender, cardId);
+    }
+
+    function acceptCall(uint256 callId, uint256 cardId, MatchResult choiceId) external {
+        CallInfo storage thisCall = calls[callId];
+        require(choiceId == invertChoice(thisCall.choice), "Invalid choice");
+        acceptCall(callId, cardId);
     }
 
     function invertChoice(MatchResult r) pure internal returns(MatchResult) {
