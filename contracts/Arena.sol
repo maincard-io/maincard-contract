@@ -33,6 +33,7 @@ contract Arena is IArena, OwnableUpgradeable {
     event NewBet(address user, uint256 eventId, uint256 cardId, MatchResult choiceId, uint256 betId, uint256 potentialRewardMaintokens);
     event NewCall(address creator, uint256 eventId, uint256 cardId, ICard.CardRarity rarity, uint256 callId, MatchResult choiceId);
     event CallAccepted(uint256 callId, address wallet, uint256 cardId);
+    event CallAccepted_v2(uint256 callId, address wallet, uint256 cardId, MatchResult choiceId);
     event CardTakenFromBet(uint256 cardId, uint256 betId, uint256 maintokensReceived, bool takenAfterMatch);
     event CardTakenFromCall(uint256 cardId, address taker, uint256 callId);
     // Events CallExpired/CallCompleted not needed at the moment.
@@ -302,7 +303,7 @@ contract Arena is IArena, OwnableUpgradeable {
         emit NewCall(msg.sender, eventId, cardId, card.getRarity(cardId), calls.length - 1, choiceId);
     }
 
-    function acceptCall(uint256 callId, uint256 cardId) public {
+    function acceptCall(uint256 callId, uint256 cardId) external {
         CallInfo storage thisCall = calls[callId];
         _validateCall(thisCall.eventId, cardId, thisCall.choice);
         require(thisCall.firstParticipantAddress != address(0x0) && thisCall.secondParticipantAddress == address(0x0), "Call does not exist or accepted");
@@ -312,12 +313,7 @@ contract Arena is IArena, OwnableUpgradeable {
         card.safeTransferFrom(msg.sender, address(this), cardId);
         callsByUser[msg.sender].push(callId);
         emit CallAccepted(callId, msg.sender, cardId);
-    }
-
-    function acceptCall(uint256 callId, uint256 cardId, MatchResult choiceId) external {
-        CallInfo storage thisCall = calls[callId];
-        require(choiceId == invertChoice(thisCall.choice), "Invalid choice");
-        acceptCall(callId, cardId);
+        emit CallAccepted_v2(callId, msg.sender, cardId, invertChoice(thisCall.choice));
     }
 
     function invertChoice(MatchResult r) pure internal returns(MatchResult) {

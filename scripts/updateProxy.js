@@ -16,7 +16,7 @@ async function main() {
   const auctionProxy = getNamedAccount("auctionProxy")
 
   await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000}); console.log('Card upgraded');
-  await upgrades.upgradeProxy(arenaProxy, Arena, {gasLimit: 800000}); console.log('Arena upgraded');
+  //await upgrades.upgradeProxy(arenaProxy, Arena, {gasLimit: 800000}); console.log('Arena upgraded');
   //await upgrades.upgradeProxy(mainToken, MainToken, {gasLimit: 800000});
   //await upgrades.upgradeProxy(auctionProxy, Auction, {gasLimit: 800000});
 }

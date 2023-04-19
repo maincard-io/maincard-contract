@@ -390,11 +390,11 @@ contract Card is
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Epic) {
-            uint16[5] memory t = [60, 50, 40, 30, 0];
+            uint8[5] memory t = [60, 50, 40, 30, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Legendary) {
-            uint16[6] memory t = [230, 200, 170, 140, 110, 0];
+            uint8[6] memory t = [230, 200, 170, 140, 110, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Mythic) {
