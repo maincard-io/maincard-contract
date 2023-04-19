@@ -382,23 +382,23 @@ contract Card is
         CardRarity rarity = _rarities[cardId];
         uint256 multiplier = 10**(_maintoken.decimals());
         if (rarity == CardRarity.Common) {
-            uint8[3] memory t = [10, 5, 0];
+            uint8[3] memory t = [2, 1, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Rare) {
-            uint8[4] memory t = [100, 50, 25, 0];
+            uint8[4] memory t = [20, 10, 5, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Epic) {
-            uint16[5] memory t = [300, 250, 200, 150, 0];
+            uint16[5] memory t = [60, 50, 40, 30, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Legendary) {
-            uint16[6] memory t = [1150, 1000, 850, 700, 550, 0];
+            uint16[6] memory t = [230, 200, 170, 140, 110, 0];
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Mythic) {
-            uint16[11] memory t = [6500, 6000, 5500, 5000, 4500, 4000, 3500, 3000, 2500, 2000, 0];
+            uint16[11] memory t = [1300, 1200, 1100, 1000, 900, 800, 700, 600, 500, 400, 0];
             return t[curLivesRemaining] * multiplier;
         }
         revert("Unknown rarity");
