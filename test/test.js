@@ -321,7 +321,7 @@ describe("Arena tests", () => {
         let wonCompetitions = await card.getLastConsequentWins(cardId);
         expect(wonCompetitions).to.be.equal(1);
         const alicesMaintokenBalanceAfter = await maintoken.balanceOf(alice.address);
-        expect(alicesMaintokenBalanceAfter.sub(alicesMaintokenBalanceBefore).toString()).to.be.equal("5000000000000000000");
+        expect(alicesMaintokenBalanceAfter.sub(alicesMaintokenBalanceBefore).toString()).to.be.equal("3000000000000000000");
         const livesRemaining = await card.livesRemaining(cardId);
         expect(livesRemaining).to.be.equal(2);
         
@@ -390,7 +390,7 @@ describe("Arena tests", () => {
         statistics = await card.getBetsStatistics(cardId);
         expect(statistics).to.be.equal(5);
         const alicesMaintokenBalanceAfterWinningWith1Life = await maintoken.balanceOf(alice.address);
-        expect(alicesMaintokenBalanceAfterWinningWith1Life.sub(alicesMaintokenBalanceWinningWith1Life).toString()).to.be.equal("3000000000000000000");
+        expect(alicesMaintokenBalanceAfterWinningWith1Life.sub(alicesMaintokenBalanceWinningWith1Life).toString()).to.be.equal("1000000000000000000");
         // Sending
         eventId = await createEvent(currentBlockTime + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();

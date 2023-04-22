@@ -154,7 +154,18 @@ contract Arena is IArena, OwnableUpgradeable {
         address originalOwner = bets[cardId].cardOwner;
         uint256 eventId = bets[cardId].eventId;
         MatchResult matchResult = eventInfos[eventId].result;
-        if (block.timestamp <= eventInfos[eventId].betsAcceptedUntilTs) {
+        if (matchResult != MatchResult.MatchIsInProgress) {
+            _takeCard(
+                cardId,
+                (matchResult == MatchResult.MatchCancelled)
+                    ? PredictionResult.NotApplicable
+                    : (
+                        (matchResult == bets[cardId].choice)
+                            ? PredictionResult.Success
+                            : PredictionResult.Failure
+                    )
+            );
+        } else if (block.timestamp <= eventInfos[eventId].betsAcceptedUntilTs) {
             // taking before the match begins.
             require(originalOwner == msg.sender, "Not Yours");
             _takeCard(cardId, PredictionResult.NotApplicable);
@@ -166,17 +177,6 @@ contract Arena is IArena, OwnableUpgradeable {
                 }
             }
             rarities[originalOwner][eventId].pop();
-        } else if (matchResult != MatchResult.MatchIsInProgress) {
-            _takeCard(
-                cardId,
-                (matchResult == MatchResult.MatchCancelled)
-                    ? PredictionResult.NotApplicable
-                    : (
-                        (matchResult == bets[cardId].choice)
-                            ? PredictionResult.Success
-                            : PredictionResult.Failure
-                    )
-            );
         } else {
             revert("Match is in progress");
         }
@@ -303,7 +303,7 @@ contract Arena is IArena, OwnableUpgradeable {
         emit NewCall(msg.sender, eventId, cardId, card.getRarity(cardId), calls.length - 1, choiceId);
     }
 
-    function acceptCall(uint256 callId, uint256 cardId) external {
+    function acceptCall(uint256 callId, uint256 cardId) public {
         CallInfo storage thisCall = calls[callId];
         _validateCall(thisCall.eventId, cardId, thisCall.choice);
         require(thisCall.firstParticipantAddress != address(0x0) && thisCall.secondParticipantAddress == address(0x0), "Call does not exist or accepted");
@@ -314,6 +314,12 @@ contract Arena is IArena, OwnableUpgradeable {
         callsByUser[msg.sender].push(callId);
         emit CallAccepted(callId, msg.sender, cardId);
         emit CallAccepted_v2(callId, msg.sender, cardId, invertChoice(thisCall.choice));
+    }
+
+    function acceptCall(uint256 callId, uint256 cardId, MatchResult choice) external {
+        CallInfo storage thisCall = calls[callId];
+        require(choice == invertChoice(thisCall.choice), "Wrong Choice");
+        acceptCall(callId, cardId);
     }
 
     function invertChoice(MatchResult r) pure internal returns(MatchResult) {
