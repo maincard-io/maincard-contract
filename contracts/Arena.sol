@@ -342,14 +342,15 @@ contract Arena is IArena, OwnableUpgradeable {
         thisCall.secondParticipantAddress = address(0x0);
         uint256 secondParticipantCard = thisCall.secondParticipantCard;
         thisCall.secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        uint64 fakeEventDate = 0;  // As we don't use freezing for calls
 
         if (eventInfos[thisCall.eventId].result == MatchResult.Draw || eventInfos[thisCall.eventId].result == MatchResult.MatchCancelled || thisCall.secondParticipantAddress == address(0x0)) {
             emit CardTakenFromCall(firstParticipantCard, firstParticipantAddress, callId);
-            card.safeTransferFrom(address(this), firstParticipantAddress, firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
+            card.safeTransferFrom(address(this), firstParticipantAddress, firstParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
 
             if (secondParticipantAddress != address(0x0)) {
                 emit CardTakenFromCall(secondParticipantCard, secondParticipantAddress, callId);
-                card.safeTransferFrom(address(this), secondParticipantAddress, secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
+                card.safeTransferFrom(address(this), secondParticipantAddress, secondParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
             }
         } else if (
             (eventInfos[thisCall.eventId].result == thisCall.choice) ||
@@ -358,8 +359,8 @@ contract Arena is IArena, OwnableUpgradeable {
             address winner = (eventInfos[thisCall.eventId].result == thisCall.choice) ? firstParticipantAddress : secondParticipantAddress;
             emit CardTakenFromCall(firstParticipantCard, winner, callId);
             emit CardTakenFromCall(secondParticipantCard, winner, callId);
-            card.safeTransferFrom(address(this), winner, firstParticipantCard, abi.encode(PredictionResult.NotApplicable));
-            card.safeTransferFrom(address(this), winner, secondParticipantCard, abi.encode(PredictionResult.NotApplicable));
+            card.safeTransferFrom(address(this), winner, firstParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
+            card.safeTransferFrom(address(this), winner, secondParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
         } else {
             revert("Call is not claimable");
         }
