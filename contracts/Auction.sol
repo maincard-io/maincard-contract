@@ -164,7 +164,7 @@ abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUp
              );
     }
 
-    uint256[49] private __gap;
+    uint256[47] private __gap;
 }
 
 

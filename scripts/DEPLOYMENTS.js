@@ -22,7 +22,7 @@ const DATA = {
       "polygon": "0x36C729Ac4612F0CF156004D683Cf380936BC0953",
     },
     maticAuctionProxy: {
-      "polygon": "0xCF6d770210C1efcf9E9Ad7584ECFCD47214F0406",
+      "polygon": "0x094A3B77fE25bc8De4F6e679e61A00c1e1529e25",
     },
     arenaProxy: {
       "mumbai": "0x69E91f33424a211A0B70e879169A0b2684ce2829",
