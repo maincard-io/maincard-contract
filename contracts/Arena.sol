@@ -115,16 +115,6 @@ contract Arena is IArena, OwnableUpgradeable {
     ) public override {
         _validateBet(eventId, cardId, choiceId);
         ICard.CardRarity thisCardRarity = card.getRarity(cardId);
-        if (thisCardRarity == ICard.CardRarity.Common || thisCardRarity == ICard.CardRarity.Rare) {
-            uint32 amountOfLowLevelCards = 0;
-            for (uint32 i = 0; i < rarities[msg.sender][eventId].length; ++i) {
-                ICard.CardRarity rarity = rarities[msg.sender][eventId][i];
-                if (rarity == ICard.CardRarity.Common || rarity == ICard.CardRarity.Rare) {
-                    ++amountOfLowLevelCards;
-                }
-            }
-            require(amountOfLowLevelCards == 0, "You can have only one Common or Rare card on the arena");
-        }
 
         bets[cardId] = BetInfo(eventId, choiceId, msg.sender, _betId);
         betsByUser[msg.sender].push(cardId);
