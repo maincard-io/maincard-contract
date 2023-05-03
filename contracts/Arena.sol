@@ -47,7 +47,7 @@ contract Arena is IArena, OwnableUpgradeable {
 
     CallInfo[] public calls;
     uint256 _betId;
-    mapping(address => uint256[]) public callsByUser;  // user->index->cardId
+    mapping(address => uint256[]) public callsByUser;  // user->index->callId
 
     function initialize() public initializer {
         __Ownable_init();
@@ -263,26 +263,32 @@ contract Arena is IArena, OwnableUpgradeable {
     function callsByAddressCount(address owner) external view returns (uint256) {
         return callsByUser[owner].length;
     }
-    function callsByAddressAndIndex(address owner, uint256 offset) external view returns (uint256[10] memory, uint256[10] memory, MatchResult[10] memory, MatchResult[10] memory) {
-        uint256[10] memory cardIds;
+
+    function callsByAddressAndIndex(address owner, uint256 offset) external view returns (uint256[10] memory callIds, uint256[10] memory, MatchResult[10] memory, MatchResult[10] memory, uint256[10] memory cardIds) {
         uint256[10] memory eventIds;
         MatchResult[10] memory choices;
         MatchResult[10] memory results;
-	    uint256 lastIndex = offset + 10;
+        uint256 lastIndex = offset + 10;
         if (lastIndex > callsByUser[owner].length) {
             lastIndex = callsByUser[owner].length;
         }
         for (uint256 i = offset; i < lastIndex; ++i) {
-            cardIds[i-offset] = callsByUser[owner][i];
-            eventIds[i-offset] = calls[cardIds[i-offset]].eventId;
-            choices[i-offset] = 
-                (calls[cardIds[i-offset]].firstParticipantAddress == owner && 
-                    calls[cardIds[i-offset]].firstParticipantCard == cardIds[i-offset])
-                ? calls[cardIds[i-offset]].choice
+            uint256 callId = callsByUser[owner][i];
+            bool ownerIsFirst = calls[callId].firstParticipantAddress == owner;
+            uint256 index = i - offset;
+            callIds[index] = callId;
+            eventIds[index] = calls[callId].eventId;
+            cardIds[index] =
+                ownerIsFirst
+                ? calls[callId].firstParticipantCard
+                : calls[callId].secondParticipantCard;
+            choices[index] = 
+                ownerIsFirst
+                ? calls[callId].choice
                 : invertChoice(calls[cardIds[i-offset]].choice);
-            results[i-offset] = eventInfos[eventIds[i-offset]].result;
+            results[index] = eventInfos[eventIds[i-offset]].result;
         }
-        return (cardIds, eventIds, choices, results);
+        return (callIds, eventIds, choices, results, cardIds);
     }
 
     function _validateCall(uint256 eventId, uint256 cardId, MatchResult choiceId) internal view {
@@ -307,6 +313,7 @@ contract Arena is IArena, OwnableUpgradeable {
         CallInfo storage thisCall = calls[callId];
         _validateCall(thisCall.eventId, cardId, thisCall.choice);
         require(thisCall.firstParticipantAddress != address(0x0) && thisCall.secondParticipantAddress == address(0x0), "Call does not exist or accepted");
+        require(thisCall.firstParticipantAddress != msg.sender, "Can't accept your own call");
         require(card.getRarity(cardId) == card.getRarity(thisCall.firstParticipantCard), "Call should have same cards");
         thisCall.secondParticipantAddress = msg.sender;
         thisCall.secondParticipantCard = cardId;
@@ -344,7 +351,7 @@ contract Arena is IArena, OwnableUpgradeable {
         thisCall.secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         uint64 fakeEventDate = 0;  // As we don't use freezing for calls
 
-        if (eventInfos[thisCall.eventId].result == MatchResult.Draw || eventInfos[thisCall.eventId].result == MatchResult.MatchCancelled || thisCall.secondParticipantAddress == address(0x0)) {
+        if (eventInfos[thisCall.eventId].result == MatchResult.Draw || eventInfos[thisCall.eventId].result == MatchResult.MatchCancelled || secondParticipantAddress == address(0x0)) {
             emit CardTakenFromCall(firstParticipantCard, firstParticipantAddress, callId);
             card.safeTransferFrom(address(this), firstParticipantAddress, firstParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
 

@@ -8,17 +8,23 @@ async function main() {
   const Card = await ethers.getContractFactory("Card");
   const MainToken = await ethers.getContractFactory("MainToken");
   const Arena = await ethers.getContractFactory("Arena");
-  const Auction = await ethers.getContractFactory("MaintokenAuction");
+  const Auction = await ethers.getContractFactory("Auction");
+  const MaticAuction = await ethers.getContractFactory("MaticAuction");
 
   const mainToken = getNamedAccount("mainToken")
   const cardProxy = getNamedAccount("cardProxy")
   const arenaProxy = getNamedAccount("arenaProxy")
   const auctionProxy = getNamedAccount("auctionProxy")
+  const maticAuctionProxy = getNamedAccount("maticAuctionProxy")
 
  // await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000}); console.log('Card upgraded');
   await upgrades.upgradeProxy(arenaProxy, Arena, {gasLimit: 800000}); console.log('Arena upgraded');
+  console.log("Arena upgraded")
   //await upgrades.upgradeProxy(mainToken, MainToken, {gasLimit: 800000});
-  //await upgrades.upgradeProxy(auctionProxy, Auction, {gasLimit: 800000});
+  await upgrades.upgradeProxy(auctionProxy, Auction, {gasLimit: 800000});
+  console.log("Auction upgraded")
+  await upgrades.upgradeProxy(maticAuctionProxy, MaticAuction, {gasLimit: 800000});
+  console.log("MaticAuction upgraded")
 }
 
 main()
