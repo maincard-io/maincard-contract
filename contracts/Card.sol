@@ -423,17 +423,13 @@ contract Card is
 
     function _restoreLive(uint256 cardId) internal {
         require(ownerOf(cardId) == msg.sender);
-        require(_livesRemaining[cardId] > 0 || recoveriesRemaining(cardId) > 0, "No more recoveries"); /* BY WP same values */
+        require(_livesRemaining[cardId] > 0); /* BY WP same values */
         if (_livesRemaining[cardId] == 0) {
             _cardInfos[cardId].recoveriesDone += 1;
         }
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
         _livesRemaining[cardId] = newLives;
-    }
-
-    function recoveriesRemaining(uint256 cardId) public view returns(uint8) {
-        return getDefaultLivesForNewCard(_rarities[cardId]) - _cardInfos[cardId].recoveriesDone;
     }
 
     function massApprove(address where, uint256[] calldata cardIds) external {
