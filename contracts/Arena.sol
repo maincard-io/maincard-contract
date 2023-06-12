@@ -30,24 +30,48 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 secondParticipantCard;
     }
 
-    event NewBet(address user, uint256 eventId, uint256 cardId, MatchResult choiceId, uint256 betId, uint256 potentialRewardMaintokens);
-    event NewCall(address creator, uint256 eventId, uint256 cardId, ICard.CardRarity rarity, uint256 callId, MatchResult choiceId);
+    event NewBet(
+        address user,
+        uint256 eventId,
+        uint256 cardId,
+        MatchResult choiceId,
+        uint256 betId,
+        uint256 potentialRewardMaintokens
+    );
+    event NewCall(
+        address creator,
+        uint256 eventId,
+        uint256 cardId,
+        ICard.CardRarity rarity,
+        uint256 callId,
+        MatchResult choiceId
+    );
     event CallAccepted(uint256 callId, address wallet, uint256 cardId);
-    event CallAccepted_v2(uint256 callId, address wallet, uint256 cardId, MatchResult choiceId);
-    event CardTakenFromBet(uint256 cardId, uint256 betId, uint256 maintokensReceived, bool takenAfterMatch);
+    event CallAccepted_v2(
+        uint256 callId,
+        address wallet,
+        uint256 cardId,
+        MatchResult choiceId
+    );
+    event CardTakenFromBet(
+        uint256 cardId,
+        uint256 betId,
+        uint256 maintokensReceived,
+        bool takenAfterMatch
+    );
     event CardTakenFromCall(uint256 cardId, address taker, uint256 callId);
     // Events CallExpired/CallCompleted not needed at the moment.
 
     ICard card;
-    mapping(uint256 => EventInfo) public eventInfos;  // eventId -> EventInfo
+    mapping(uint256 => EventInfo) public eventInfos; // eventId -> EventInfo
     mapping(uint256 => BetInfo) public bets; // cardId -> BetInfo
     mapping(address => uint256[]) public betsByUser; // user->index->cardId
-    mapping(address => mapping(uint256 => ICard.CardRarity[])) rarities; // user->eventId->rarity[]
+    mapping(address => mapping(uint256 => ICard.CardRarity[])) rarities; // NOT IN USE: user->eventId->rarity[], used to be used for not allowing 2 common cards to same event
     MainToken maintoken;
 
     CallInfo[] public calls;
     uint256 _betId;
-    mapping(address => uint256[]) public callsByUser;  // user->index->callId
+    mapping(address => uint256[]) public callsByUser; // user->index->callId
 
     function initialize() public initializer {
         __Ownable_init();
@@ -59,7 +83,7 @@ contract Arena is IArena, OwnableUpgradeable {
 
     function setMainToken(MainToken _maintoken) public onlyOwner {
         maintoken = _maintoken;
-    }    
+    }
 
     function createEvent(
         uint256 eventId,
@@ -81,13 +105,19 @@ contract Arena is IArena, OwnableUpgradeable {
             eventInfos[eventId].descriptionHash !=
             0x0000000000000000000000000000000000000000000000000000000000000000;
     }
+
     function eventExists(uint256 eventId) external view returns (bool) {
         return _eventExists(eventId);
     }
 
-    function _validateBet(uint256 eventId, uint256 cardId, MatchResult choiceId) internal view {
+    function _validateBet(
+        uint256 eventId,
+        uint256 cardId,
+        MatchResult choiceId,
+        address txSigner
+    ) internal view {
         require(
-            card.ownerOf(cardId) == msg.sender,
+            card.ownerOf(cardId) == txSigner,
             "You can not bet by not your card"
         );
         require(
@@ -103,7 +133,9 @@ contract Arena is IArena, OwnableUpgradeable {
             "You can not bet with a card with 0 lives remaining"
         );
         require(
-            choiceId == MatchResult.FirstWon || choiceId == MatchResult.Draw || choiceId == MatchResult.SecondWon,
+            choiceId == MatchResult.FirstWon ||
+                choiceId == MatchResult.Draw ||
+                choiceId == MatchResult.SecondWon,
             "Wrong choice"
         );
     }
@@ -113,30 +145,78 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 cardId,
         MatchResult choiceId
     ) public override {
-        _validateBet(eventId, cardId, choiceId);
-        ICard.CardRarity thisCardRarity = card.getRarity(cardId);
-
-        bets[cardId] = BetInfo(eventId, choiceId, msg.sender, _betId);
-        betsByUser[msg.sender].push(cardId);
-        rarities[msg.sender][eventId].push(thisCardRarity);
-        card.safeTransferFrom(msg.sender, address(this), cardId);
-
-        emit NewBet(msg.sender, eventId, cardId, choiceId, _betId, card.rewardMaintokens(cardId));
-        unchecked { ++_betId; }
+        _makeBetCore(eventId, cardId, choiceId, msg.sender);
     }
 
-    function massMakeBet(uint256[] calldata eventId, uint256[] calldata cardId, MatchResult[] calldata choiceId) external {
-        require(eventId.length == cardId.length && cardId.length == choiceId.length, "bl");
+    function makeBetsGasFree(
+        uint256[] calldata eventIds,
+        uint256[] calldata cardIds,
+        MatchResult[] calldata choiceIds,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory originalMessage;
+        for (uint i = 0; i < eventIds.length; i++) {
+            bytes memory encodedData = abi.encodePacked(eventIds[i], cardIds[i], choiceIds[i]);
+            originalMessage = abi.encodePacked(originalMessage, encodedData);
+        }
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
+            )
+        );
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        for (uint256 i = 0; i < eventIds.length; ++i) {
+            require(card.ownerOf(cardIds[i]) == signer, "Not you card");
+            _makeBetCore(eventIds[i], cardIds[i], choiceIds[i], signer);
+        }
+    }
+
+    function _makeBetCore(
+        uint256 eventId,
+        uint256 cardId,
+        MatchResult choiceId,
+        address cardOwner
+    ) internal {
+        _validateBet(eventId, cardId, choiceId, cardOwner);
+
+        bets[cardId] = BetInfo(eventId, choiceId, cardOwner, _betId);
+        betsByUser[cardOwner].push(cardId);
+        card.safeTransferFrom(cardOwner, address(this), cardId);
+
+        emit NewBet(
+            cardOwner,
+            eventId,
+            cardId,
+            choiceId,
+            _betId,
+            card.rewardMaintokens(cardId)
+        );
+        unchecked {
+            ++_betId;
+        }
+    }
+
+    function massMakeBet(
+        uint256[] calldata eventId,
+        uint256[] calldata cardId,
+        MatchResult[] calldata choiceId
+    ) external {
+        require(
+            eventId.length == cardId.length && cardId.length == choiceId.length,
+            "bl"
+        );
         for (uint256 i = 0; i < eventId.length; ++i) {
             makeBet(eventId[i], cardId[i], choiceId[i]);
         }
     }
 
-    function setEventResult(uint256 eventId, MatchResult resultChoiceId)
-        public
-        override
-        onlyOwner
-    {
+    function setEventResult(
+        uint256 eventId,
+        MatchResult resultChoiceId
+    ) public override onlyOwner {
         eventInfos[eventId].result = resultChoiceId;
     }
 
@@ -159,34 +239,40 @@ contract Arena is IArena, OwnableUpgradeable {
             // taking before the match begins.
             require(originalOwner == msg.sender, "Not Yours");
             _takeCard(cardId, PredictionResult.NotApplicable);
-            for (uint32 i = 0; i < rarities[originalOwner][eventId].length - 1; ++i) {
-                ICard.CardRarity rarity = rarities[originalOwner][eventId][i];
-                if (rarity == card.getRarity(cardId)) {
-                    rarities[originalOwner][eventId][i] = rarities[originalOwner][eventId][rarities[originalOwner][eventId].length - 1];
-                    break;
-                }
-            }
-            rarities[originalOwner][eventId].pop();
         } else {
             revert("Match is in progress");
         }
     }
 
-    function massTakeCard(uint256 eventId, uint256[] calldata cardIds) external {
+    function massTakeCard(
+        uint256 eventId,
+        uint256[] calldata cardIds
+    ) external {
         for (uint256 i = 0; i < cardIds.length; ++i) {
             BetInfo storage betInfo = bets[cardIds[i]];
-            require (betInfo.eventId == eventId, "EventID mismatch");
+            require(betInfo.eventId == eventId, "EventID mismatch");
             takeCard(cardIds[i]);
         }
     }
 
     // nothing is wrong with takeCard, it is safe actually. This method just makes it more CAS-like.
-    function takeCardSafe(uint256 cardId, uint256 betId, bool onlyIfEventCompleted) external {
+    function takeCardSafe(
+        uint256 cardId,
+        uint256 betId,
+        bool onlyIfEventCompleted
+    ) external {
         BetInfo storage betInfo = bets[cardId];
-        require(betInfo.eventId != 0 && card.ownerOf(cardId) == address(this), "Card is not on Bet");
+        require(
+            betInfo.eventId != 0 && card.ownerOf(cardId) == address(this),
+            "Card is not on Bet"
+        );
         require(betInfo.betId == betId, "BetID mismatch");
         if (onlyIfEventCompleted) {
-            require(eventInfos[betInfo.eventId].result != MatchResult.MatchIsInProgress, "Match is still in progress");
+            require(
+                eventInfos[betInfo.eventId].result !=
+                    MatchResult.MatchIsInProgress,
+                "Match is still in progress"
+            );
         }
         takeCard(cardId);
     }
@@ -194,21 +280,30 @@ contract Arena is IArena, OwnableUpgradeable {
     function _takeCard(uint256 cardId, PredictionResult result) internal {
         address originalOwner = bets[cardId].cardOwner;
         uint256 betId = bets[cardId].betId;
-        uint64 eventDate = uint64(eventInfos[bets[cardId].eventId].betsAcceptedUntilTs);
+        uint64 eventDate = uint64(
+            eventInfos[bets[cardId].eventId].betsAcceptedUntilTs
+        );
         delete bets[cardId];
 
         uint256 myBetCount = betsByUser[originalOwner].length;
         if (myBetCount > 1) {
-            for (uint256 i = 0; i < myBetCount-1; ) {
+            for (uint256 i = 0; i < myBetCount - 1; ) {
                 if (betsByUser[originalOwner][i] == cardId) {
-                    betsByUser[originalOwner][i] = betsByUser[originalOwner][myBetCount-1];
-                    betsByUser[originalOwner][myBetCount-1] = cardId;
+                    betsByUser[originalOwner][i] = betsByUser[originalOwner][
+                        myBetCount - 1
+                    ];
+                    betsByUser[originalOwner][myBetCount - 1] = cardId;
                     break;
                 }
-                unchecked { ++i; }
+                unchecked {
+                    ++i;
+                }
             }
         }
-        require(betsByUser[originalOwner][myBetCount-1] == cardId, "Internal error");
+        require(
+            betsByUser[originalOwner][myBetCount - 1] == cardId,
+            "Internal error"
+        );
         betsByUser[originalOwner].pop();
 
         card.safeTransferFrom(
@@ -232,29 +327,60 @@ contract Arena is IArena, OwnableUpgradeable {
     function betsByAddressCount(address owner) external view returns (uint256) {
         return betsByUser[owner].length;
     }
-    function betsByAddressAndIndex(address owner, uint256 offset) external view returns (BetInfo[10] memory, uint256[10] memory, MatchResult[10] memory, uint256[10] memory) {
+
+    function betsByAddressAndIndex(
+        address owner,
+        uint256 offset
+    )
+        external
+        view
+        returns (
+            BetInfo[10] memory,
+            uint256[10] memory,
+            MatchResult[10] memory,
+            uint256[10] memory
+        )
+    {
         BetInfo[10] memory usersBets;
         uint256[10] memory cardIds;
         MatchResult[10] memory results;
         uint256[10] memory betsAcceptedUntils;
-	    uint256 lastIndex = offset + 10;
+        uint256 lastIndex = offset + 10;
         if (lastIndex > betsByUser[owner].length) {
             lastIndex = betsByUser[owner].length;
         }
         for (uint256 i = offset; i < lastIndex; ++i) {
-            cardIds[i-offset] = betsByUser[owner][i];
-            usersBets[i-offset] = bets[cardIds[i-offset]];
-            results[i-offset] = eventInfos[usersBets[i-offset].eventId].result;
-            betsAcceptedUntils[i-offset] = eventInfos[usersBets[i-offset].eventId].betsAcceptedUntilTs;
+            cardIds[i - offset] = betsByUser[owner][i];
+            usersBets[i - offset] = bets[cardIds[i - offset]];
+            results[i - offset] = eventInfos[usersBets[i - offset].eventId]
+                .result;
+            betsAcceptedUntils[i - offset] = eventInfos[
+                usersBets[i - offset].eventId
+            ].betsAcceptedUntilTs;
         }
         return (usersBets, cardIds, results, betsAcceptedUntils);
     }
 
-    function callsByAddressCount(address owner) external view returns (uint256) {
+    function callsByAddressCount(
+        address owner
+    ) external view returns (uint256) {
         return callsByUser[owner].length;
     }
 
-    function callsByAddressAndIndex(address owner, uint256 offset) external view returns (uint256[10] memory callIds, uint256[10] memory, MatchResult[10] memory, MatchResult[10] memory, uint256[10] memory cardIds) {
+    function callsByAddressAndIndex(
+        address owner,
+        uint256 offset
+    )
+        external
+        view
+        returns (
+            uint256[10] memory callIds,
+            uint256[10] memory,
+            MatchResult[10] memory,
+            MatchResult[10] memory,
+            uint256[10] memory cardIds
+        )
+    {
         uint256[10] memory eventIds;
         MatchResult[10] memory choices;
         MatchResult[10] memory results;
@@ -268,58 +394,102 @@ contract Arena is IArena, OwnableUpgradeable {
             uint256 index = i - offset;
             callIds[index] = callId;
             eventIds[index] = calls[callId].eventId;
-            cardIds[index] =
-                ownerIsFirst
+            cardIds[index] = ownerIsFirst
                 ? calls[callId].firstParticipantCard
                 : calls[callId].secondParticipantCard;
-            choices[index] = 
-                ownerIsFirst
+            choices[index] = ownerIsFirst
                 ? calls[callId].choice
-                : invertChoice(calls[cardIds[i-offset]].choice);
-            results[index] = eventInfos[eventIds[i-offset]].result;
+                : invertChoice(calls[cardIds[i - offset]].choice);
+            results[index] = eventInfos[eventIds[i - offset]].result;
         }
         return (callIds, eventIds, choices, results, cardIds);
     }
 
-    function _validateCall(uint256 eventId, uint256 cardId, MatchResult choiceId) internal view {
+    function _validateCall(
+        uint256 eventId,
+        uint256 cardId,
+        MatchResult choiceId,
+        address txSigner
+    ) internal view {
         require(
-            choiceId == MatchResult.FirstWon || choiceId == MatchResult.SecondWon,
+            choiceId == MatchResult.FirstWon ||
+                choiceId == MatchResult.SecondWon,
             "You can only bet on winning of one team"
         );
-        _validateBet(eventId, cardId, choiceId);
+        _validateBet(eventId, cardId, choiceId, txSigner);
     }
 
-    function createCall(uint256 eventId, uint256 cardId, MatchResult choiceId) external {
+    function createCall(
+        uint256 eventId,
+        uint256 cardId,
+        MatchResult choiceId
+    ) external {
         // Here is important to understand that the card could be approved by client to be used
         // in Arena contract. But we don't want anyone to be able to put someone else's card to a call.
-        _validateCall(eventId, cardId, choiceId);
-        calls.push(CallInfo(eventId, choiceId, msg.sender, cardId, address(0x0), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff));
+        _validateCall(eventId, cardId, choiceId, msg.sender);
+        calls.push(
+            CallInfo(
+                eventId,
+                choiceId,
+                msg.sender,
+                cardId,
+                address(0x0),
+                0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+            )
+        );
         card.safeTransferFrom(msg.sender, address(this), cardId);
         callsByUser[msg.sender].push(calls.length - 1);
-        emit NewCall(msg.sender, eventId, cardId, card.getRarity(cardId), calls.length - 1, choiceId);
+        emit NewCall(
+            msg.sender,
+            eventId,
+            cardId,
+            card.getRarity(cardId),
+            calls.length - 1,
+            choiceId
+        );
     }
 
     function acceptCall(uint256 callId, uint256 cardId) public {
         CallInfo storage thisCall = calls[callId];
-        _validateCall(thisCall.eventId, cardId, thisCall.choice);
-        require(thisCall.firstParticipantAddress != address(0x0) && thisCall.secondParticipantAddress == address(0x0), "Call does not exist or accepted");
-        require(thisCall.firstParticipantAddress != msg.sender, "Can't accept your own call");
-        require(card.getRarity(cardId) == card.getRarity(thisCall.firstParticipantCard), "Call should have same cards");
+        _validateCall(thisCall.eventId, cardId, thisCall.choice, msg.sender);
+        require(
+            thisCall.firstParticipantAddress != address(0x0) &&
+                thisCall.secondParticipantAddress == address(0x0),
+            "Call does not exist or accepted"
+        );
+        require(
+            thisCall.firstParticipantAddress != msg.sender,
+            "Can't accept your own call"
+        );
+        require(
+            card.getRarity(cardId) ==
+                card.getRarity(thisCall.firstParticipantCard),
+            "Call should have same cards"
+        );
         thisCall.secondParticipantAddress = msg.sender;
         thisCall.secondParticipantCard = cardId;
         card.safeTransferFrom(msg.sender, address(this), cardId);
         callsByUser[msg.sender].push(callId);
         emit CallAccepted(callId, msg.sender, cardId);
-        emit CallAccepted_v2(callId, msg.sender, cardId, invertChoice(thisCall.choice));
+        emit CallAccepted_v2(
+            callId,
+            msg.sender,
+            cardId,
+            invertChoice(thisCall.choice)
+        );
     }
 
-    function acceptCall(uint256 callId, uint256 cardId, MatchResult choice) external {
+    function acceptCall(
+        uint256 callId,
+        uint256 cardId,
+        MatchResult choice
+    ) external {
         CallInfo storage thisCall = calls[callId];
         require(choice == invertChoice(thisCall.choice), "Wrong Choice");
         acceptCall(callId, cardId);
     }
 
-    function invertChoice(MatchResult r) pure internal returns(MatchResult) {
+    function invertChoice(MatchResult r) internal pure returns (MatchResult) {
         if (r == MatchResult.FirstWon) return MatchResult.SecondWon;
         if (r == MatchResult.SecondWon) return MatchResult.FirstWon;
         revert("Irreversable choice");
@@ -334,30 +504,68 @@ contract Arena is IArena, OwnableUpgradeable {
         address firstParticipantAddress = thisCall.firstParticipantAddress;
         thisCall.firstParticipantAddress = address(0x0);
         uint256 firstParticipantCard = thisCall.firstParticipantCard;
-        thisCall.firstParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        thisCall
+            .firstParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         address secondParticipantAddress = thisCall.secondParticipantAddress;
         thisCall.secondParticipantAddress = address(0x0);
         uint256 secondParticipantCard = thisCall.secondParticipantCard;
-        thisCall.secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-        uint64 fakeEventDate = 0;  // As we don't use freezing for calls
+        thisCall
+            .secondParticipantCard = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        uint64 fakeEventDate = 0; // As we don't use freezing for calls
 
-        if (eventInfos[thisCall.eventId].result == MatchResult.Draw || eventInfos[thisCall.eventId].result == MatchResult.MatchCancelled || secondParticipantAddress == address(0x0)) {
-            emit CardTakenFromCall(firstParticipantCard, firstParticipantAddress, callId);
-            card.safeTransferFrom(address(this), firstParticipantAddress, firstParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
+        if (
+            eventInfos[thisCall.eventId].result == MatchResult.Draw ||
+            eventInfos[thisCall.eventId].result == MatchResult.MatchCancelled ||
+            secondParticipantAddress == address(0x0)
+        ) {
+            emit CardTakenFromCall(
+                firstParticipantCard,
+                firstParticipantAddress,
+                callId
+            );
+            card.safeTransferFrom(
+                address(this),
+                firstParticipantAddress,
+                firstParticipantCard,
+                abi.encode(PredictionResult.NotApplicable, fakeEventDate)
+            );
 
             if (secondParticipantAddress != address(0x0)) {
-                emit CardTakenFromCall(secondParticipantCard, secondParticipantAddress, callId);
-                card.safeTransferFrom(address(this), secondParticipantAddress, secondParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
+                emit CardTakenFromCall(
+                    secondParticipantCard,
+                    secondParticipantAddress,
+                    callId
+                );
+                card.safeTransferFrom(
+                    address(this),
+                    secondParticipantAddress,
+                    secondParticipantCard,
+                    abi.encode(PredictionResult.NotApplicable, fakeEventDate)
+                );
             }
         } else if (
             (eventInfos[thisCall.eventId].result == thisCall.choice) ||
-            (eventInfos[thisCall.eventId].result == invertChoice(thisCall.choice))
+            (eventInfos[thisCall.eventId].result ==
+                invertChoice(thisCall.choice))
         ) {
-            address winner = (eventInfos[thisCall.eventId].result == thisCall.choice) ? firstParticipantAddress : secondParticipantAddress;
+            address winner = (eventInfos[thisCall.eventId].result ==
+                thisCall.choice)
+                ? firstParticipantAddress
+                : secondParticipantAddress;
             emit CardTakenFromCall(firstParticipantCard, winner, callId);
             emit CardTakenFromCall(secondParticipantCard, winner, callId);
-            card.safeTransferFrom(address(this), winner, firstParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
-            card.safeTransferFrom(address(this), winner, secondParticipantCard, abi.encode(PredictionResult.NotApplicable, fakeEventDate));
+            card.safeTransferFrom(
+                address(this),
+                winner,
+                firstParticipantCard,
+                abi.encode(PredictionResult.NotApplicable, fakeEventDate)
+            );
+            card.safeTransferFrom(
+                address(this),
+                winner,
+                secondParticipantCard,
+                abi.encode(PredictionResult.NotApplicable, fakeEventDate)
+            );
         } else {
             revert("Call is not claimable");
         }
@@ -375,19 +583,23 @@ contract Arena is IArena, OwnableUpgradeable {
         revert("Call not found");
     }
 
-    function getMyCallCards(address user) public view returns (uint256[] memory) {
+    function getMyCallCards(
+        address user
+    ) public view returns (uint256[] memory) {
         uint256[] storage userCalls = callsByUser[user];
         uint256[] memory cardIds = new uint256[](userCalls.length);
         for (uint256 i = 0; i < userCalls.length; ++i) {
-            cardIds[i] = calls[userCalls[i]].firstParticipantAddress == user ? calls[userCalls[i]].firstParticipantCard : calls[userCalls[i]].secondParticipantCard;
+            cardIds[i] = calls[userCalls[i]].firstParticipantAddress == user
+                ? calls[userCalls[i]].firstParticipantCard
+                : calls[userCalls[i]].secondParticipantCard;
         }
         return cardIds;
     }
 
     function onERC721Received(
-        address, /* operator */
-        address, /* from */
-        uint256, /* tokenId */
+        address /* operator */,
+        address /* from */,
+        uint256 /* tokenId */,
         bytes calldata /* data */
     ) external pure returns (bytes4) {
         return this.onERC721Received.selector;

@@ -115,6 +115,10 @@ contract Card is
         _upgradePrices[rarity] = newTokenPrice;
     }
 
+    function isApprovedForAll(address owner, address spender) public view override(IERC721Upgradeable, ERC721Upgradeable) returns (bool) {
+        return (spender == address(_arenaAddress)) || super.isApprovedForAll(owner, spender);
+    }
+
     function _mint(address newTokenOwner, CardRarity rarity) internal {
         // require(isLessRareOrEq(rarity, getMintAllowance(newTokenOwner)), "You have not uncovered the level");
         if (isLessRareOrEq(getMintAllowance(newTokenOwner), rarity)) {

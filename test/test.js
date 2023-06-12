@@ -422,23 +422,6 @@ describe("Arena tests", () => {
         await expect(arenaAsAlice.setEventResult(eventId, FirstWon)).to.be.reverted;
     })
 
-    it("Does not allow to place two regular cards", async () => {
-        const cardAsAlice = card.connect(alice);
-
-        const mintTx = await card.freeMint(alice.address, Regular);
-        const mintEffects = await mintTx.wait();
-        const newCardId = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
-
-        const eventId = await createEvent(currentBlockTime + halfHour);
-        await cardAsAlice.approve(arenaAsAlice.address, newCardId)
-        const makeBetTx = await arenaAsAlice.makeBet(eventId, newCardId, SecondWon);
-        await makeBetTx.wait();
-
-        await cardAsAlice.approve(arenaAsAlice.address, cardId)
-        await expect(arenaAsAlice.makeBet(eventId, cardId, FirstWon)).to.be.reverted;
-        await arenaAsAlice.takeCard(newCardId);
-    });
-
     it("Allows to place regular+legendary cards", async () => {
         const cardAsAlice = card.connect(alice);
         const eventId = await createEvent(currentBlockTime + halfHour);
@@ -518,4 +501,48 @@ describe("Arena tests", () => {
             await mintTx.wait();
         }
     });
+
+    it("Supports gasfree operations", async () => {
+        const gaslessMan = ethers.Wallet.createRandom();
+
+        const mintTx1 = await card.freeMint(gaslessMan.address, Regular);
+        const mintEffects1 = await mintTx1.wait();
+        const mintedTokenId1 = mintEffects1.events.filter(e => e.event === "Transfer")[0].args[2];
+        const mintTx2 = await card.freeMint(gaslessMan.address, Regular);
+        const mintEffects2 = await mintTx2.wait();
+        const mintedTokenId2 = mintEffects2.events.filter(e => e.event === "Transfer")[0].args[2];
+
+        const eventId = await createEvent(currentBlockTime + halfHour);
+        expect(await card.ownerOf(mintedTokenId1)).to.be.eq(gaslessMan.address)
+        expect(await card.ownerOf(mintedTokenId2)).to.be.eq(gaslessMan.address)
+
+        // This is done on a frontend
+        const makeBetMessage = ethers.utils.arrayify(
+            ethers.utils.keccak256(
+                ethers.utils.solidityPack(
+                    // add more items to this array if there are more cards
+                    [
+                        "uint256", "uint256", "uint8",
+                        "uint256", "uint256", "uint8",
+                    ],
+                    [
+                        eventId, mintedTokenId1, FirstWon,
+                        eventId, mintedTokenId2, FirstWon,
+                    ])
+            )
+        )
+        const signatureInfo = ethers.utils.splitSignature(await gaslessMan.signMessage(makeBetMessage))
+
+        // then eventId, tokenId, choice, and signatureInfo is sent to backend
+        // and placed by someone
+        await arenaAsAlice.makeBetsGasFree(
+            [eventId, eventId],
+            [mintedTokenId1, mintedTokenId2],
+            [FirstWon, FirstWon],
+            signatureInfo.v, signatureInfo.r, signatureInfo.s
+        )
+
+        expect(await card.ownerOf(mintedTokenId1)).to.be.eq(arenaAsAlice.address)
+        expect(await card.ownerOf(mintedTokenId2)).to.be.eq(arenaAsAlice.address)
+    })
 })
