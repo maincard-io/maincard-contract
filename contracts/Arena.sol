@@ -72,6 +72,7 @@ contract Arena is IArena, OwnableUpgradeable {
     CallInfo[] public calls;
     uint256 _betId;
     mapping(address => uint256[]) public callsByUser; // user->index->callId
+    mapping(address => uint256) public gasFreeOpCounter;
 
     function initialize() public initializer {
         __Ownable_init();
@@ -152,13 +153,18 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256[] calldata eventIds,
         uint256[] calldata cardIds,
         MatchResult[] calldata choiceIds,
+        address caller,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) external {
-        bytes memory originalMessage;
+        bytes memory originalMessage = abi.encodePacked(gasFreeOpCounter[caller]);
         for (uint i = 0; i < eventIds.length; i++) {
-            bytes memory encodedData = abi.encodePacked(eventIds[i], cardIds[i], choiceIds[i]);
+            bytes memory encodedData = abi.encodePacked(
+                eventIds[i],
+                cardIds[i],
+                choiceIds[i]
+            );
             originalMessage = abi.encodePacked(originalMessage, encodedData);
         }
         bytes32 prefixedHashMessage = keccak256(
@@ -168,8 +174,10 @@ contract Arena is IArena, OwnableUpgradeable {
             )
         );
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == caller, "snec");
+        ++gasFreeOpCounter[caller];
         for (uint256 i = 0; i < eventIds.length; ++i) {
-            require(card.ownerOf(cardIds[i]) == signer, "Not you card");
+            require(card.ownerOf(cardIds[i]) == signer, "nyc");
             _makeBetCore(eventIds[i], cardIds[i], choiceIds[i], signer);
         }
     }
@@ -424,23 +432,59 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 cardId,
         MatchResult choiceId
     ) external {
+        _createCallCore(msg.sender, eventId, cardId, choiceId);
+    }
+
+    function createCallGasFree(
+        uint256 eventId,
+        uint256 cardId,
+        MatchResult choiceId,
+        address caller,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory originalMessage = abi.encodePacked(
+            gasFreeOpCounter[caller],
+            eventId,
+            cardId,
+            choiceId
+        );
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
+            )
+        );
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == caller, "snec");
+        ++gasFreeOpCounter[caller];
+        _createCallCore(signer, eventId, cardId, choiceId);
+    }
+
+    function _createCallCore(
+        address sender,
+        uint256 eventId,
+        uint256 cardId,
+        MatchResult choiceId
+    ) internal {
         // Here is important to understand that the card could be approved by client to be used
         // in Arena contract. But we don't want anyone to be able to put someone else's card to a call.
-        _validateCall(eventId, cardId, choiceId, msg.sender);
+        _validateCall(eventId, cardId, choiceId, sender);
         calls.push(
             CallInfo(
                 eventId,
                 choiceId,
-                msg.sender,
+                sender,
                 cardId,
                 address(0x0),
                 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
             )
         );
-        card.safeTransferFrom(msg.sender, address(this), cardId);
-        callsByUser[msg.sender].push(calls.length - 1);
+        card.safeTransferFrom(sender, address(this), cardId);
+        callsByUser[sender].push(calls.length - 1);
         emit NewCall(
-            msg.sender,
+            sender,
             eventId,
             cardId,
             card.getRarity(cardId),
@@ -449,16 +493,20 @@ contract Arena is IArena, OwnableUpgradeable {
         );
     }
 
-    function acceptCall(uint256 callId, uint256 cardId) public {
+    function acceptCall(uint256 callId, uint256 cardId) external {
+        _acceptCallCore(callId, cardId, msg.sender);
+    }
+
+    function _acceptCallCore(uint256 callId, uint256 cardId, address sender) internal {
         CallInfo storage thisCall = calls[callId];
-        _validateCall(thisCall.eventId, cardId, thisCall.choice, msg.sender);
+        _validateCall(thisCall.eventId, cardId, thisCall.choice, sender);
         require(
             thisCall.firstParticipantAddress != address(0x0) &&
                 thisCall.secondParticipantAddress == address(0x0),
             "Call does not exist or accepted"
         );
         require(
-            thisCall.firstParticipantAddress != msg.sender,
+            thisCall.firstParticipantAddress != sender,
             "Can't accept your own call"
         );
         require(
@@ -466,14 +514,14 @@ contract Arena is IArena, OwnableUpgradeable {
                 card.getRarity(thisCall.firstParticipantCard),
             "Call should have same cards"
         );
-        thisCall.secondParticipantAddress = msg.sender;
+        thisCall.secondParticipantAddress = sender;
         thisCall.secondParticipantCard = cardId;
-        card.safeTransferFrom(msg.sender, address(this), cardId);
-        callsByUser[msg.sender].push(callId);
-        emit CallAccepted(callId, msg.sender, cardId);
+        card.safeTransferFrom(sender, address(this), cardId);
+        callsByUser[sender].push(callId);
+        emit CallAccepted(callId, sender, cardId);
         emit CallAccepted_v2(
             callId,
-            msg.sender,
+            sender,
             cardId,
             invertChoice(thisCall.choice)
         );
@@ -486,7 +534,36 @@ contract Arena is IArena, OwnableUpgradeable {
     ) external {
         CallInfo storage thisCall = calls[callId];
         require(choice == invertChoice(thisCall.choice), "Wrong Choice");
-        acceptCall(callId, cardId);
+        _acceptCallCore(callId, cardId, msg.sender);
+    }
+
+    function acceptCallGasFree(
+        uint256 callId,
+        uint256 cardId,
+        MatchResult choice,
+        address caller,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory originalMessage = abi.encodePacked(
+            callId,
+            cardId,
+            choice,
+            gasFreeOpCounter[caller]
+        );
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
+            )
+        );
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == caller, "snec");
+        ++gasFreeOpCounter[caller];
+        CallInfo storage thisCall = calls[callId];
+        require(choice == invertChoice(thisCall.choice), "Wrong Choice");
+        _acceptCallCore(callId, cardId, signer);
     }
 
     function invertChoice(MatchResult r) internal pure returns (MatchResult) {

@@ -59,6 +59,7 @@ contract Card is
     }
     mapping(uint256 => CardInfo) public _cardInfos;
     uint256 public _freeMintNonce;
+    mapping(address => uint256) public gasFreeOpCounter;
 
     function setArenaAddress(IArena arena) external {
         require(
@@ -116,7 +117,9 @@ contract Card is
     }
 
     function isApprovedForAll(address owner, address spender) public view override(IERC721Upgradeable, ERC721Upgradeable) returns (bool) {
-        return (spender == address(_arenaAddress)) || super.isApprovedForAll(owner, spender);
+        return (spender == address(_arenaAddress)) ||
+               (spender == address(_auctionAddress)) ||
+               super.isApprovedForAll(owner, spender);
     }
 
     function _mint(address newTokenOwner, CardRarity rarity) internal {
@@ -417,6 +420,27 @@ contract Card is
         _restoreLive(cardId);
     }
 
+    function restoreLiveGasFree(uint256 cardId, address caller, uint8 _v, bytes32 _r, bytes32 _s) external {
+        bytes memory originalMessage = abi.encodePacked(
+            gasFreeOpCounter[caller],
+            cardId
+        );
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
+            )
+        );
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == caller, "snec");
+        ++gasFreeOpCounter[caller];
+
+        uint256 cost = recoveryMaintokens(cardId);
+        require(cost > 0, "Nothing to restore");
+        _maintoken.transferFrom(signer, address(this), cost);
+        _restoreLive(cardId);        
+    }
+
     /* Pay with MATIC */
     function restoreLiveMatic(uint256 cardId) external payable {
         uint256 cost = recoveryMatic(cardId);
@@ -427,13 +451,13 @@ contract Card is
 
     function _restoreLive(uint256 cardId) internal {
         require(ownerOf(cardId) == msg.sender);
-        require(_livesRemaining[cardId] > 0); /* BY WP same values */
-        if (_livesRemaining[cardId] == 0) {
-            _cardInfos[cardId].recoveriesDone += 1;
-        }
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
         _livesRemaining[cardId] = newLives;
+    }
+
+    function recoveriesRemaining(uint256) public pure returns(uint8) {
+        return 100;
     }
 
     function massApprove(address where, uint256[] calldata cardIds) external {

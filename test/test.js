@@ -520,12 +520,16 @@ describe("Arena tests", () => {
         const makeBetMessage = ethers.utils.arrayify(
             ethers.utils.keccak256(
                 ethers.utils.solidityPack(
-                    // add more items to this array if there are more cards
                     [
+                        "uint256",
+
+                        // add more items to this array if there are more cards
                         "uint256", "uint256", "uint8",
                         "uint256", "uint256", "uint8",
                     ],
                     [
+                        await arenaAsAlice.gasFreeOpCounter(gaslessMan.address),
+
                         eventId, mintedTokenId1, FirstWon,
                         eventId, mintedTokenId2, FirstWon,
                     ])
@@ -539,6 +543,7 @@ describe("Arena tests", () => {
             [eventId, eventId],
             [mintedTokenId1, mintedTokenId2],
             [FirstWon, FirstWon],
+            gaslessMan.address,
             signatureInfo.v, signatureInfo.r, signatureInfo.s
         )
 

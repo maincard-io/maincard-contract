@@ -8,8 +8,8 @@ describe("Auction tests", () => {
     let admin, alice, bob, carl;
 
     let mintNewCard, placeCard, placeCardToMaticAuction,
-                     takeCard, takeCardFromMaticAuction,
-                     placeBet, placeBetToMaticAuction;
+        takeCard, takeCardFromMaticAuction,
+        placeBet, placeBetToMaticAuction;
 
     before(async () => {
         [admin, alice, bob, carl] = await ethers.getSigners();
@@ -74,7 +74,7 @@ describe("Auction tests", () => {
         };
 
         placeBetToMaticAuction = async (cardId, signer, price) => {
-            await maticAuction.connect(signer).placeBet(cardId, price, {value: price});
+            await maticAuction.connect(signer).placeBet(cardId, price, { value: price });
         }
 
         takeCard = async (cardId, signer) => {
@@ -164,5 +164,40 @@ describe("Auction tests", () => {
         await takeCardFromMaticAuction(cardId, bob)
         const cardOwnerAfterTakingFromAuc = await card.ownerOf(cardId);
         expect(cardOwnerAfterTakingFromAuc).to.be.equal(carl.address);
+    })
+
+    it("Supports gasless ops", async () => {
+        const cardId = await mintNewCard(bob);
+        const gaslessMan = ethers.Wallet.createRandom();
+        await card.connect(bob).functions['safeTransferFrom(address,address,uint256)'](bob.address, gaslessMan.address, cardId);
+
+        // This is done on a frontend
+        const makeBetMessage = ethers.utils.arrayify(
+            ethers.utils.keccak256(
+                ethers.utils.solidityPack(
+                    [
+                        "uint256", "uint256", "uint256"
+                    ],
+                    [
+                        await arenaAsAlice.gasFreeOpCounter(gaslessMan.address),
+
+                        eventId, mintedTokenId1, FirstWon,
+                        eventId, mintedTokenId2, FirstWon,
+                    ])
+            )
+        )
+        const signatureInfo = ethers.utils.splitSignature(await gaslessMan.signMessage(makeBetMessage))
+
+        // then eventId, tokenId, choice, and signatureInfo is sent to backend
+        // and placed by someone
+        await arenaAsAlice.makeBetsGasFree(
+            [eventId, eventId],
+            [mintedTokenId1, mintedTokenId2],
+            [FirstWon, FirstWon],
+            gaslessMan.address,
+            signatureInfo.v, signatureInfo.r, signatureInfo.s
+        )
+
+        expect(await card.ownerOf(mintedTokenId1)).to.be.eq(arenaAsAlice.address)
     })
 });

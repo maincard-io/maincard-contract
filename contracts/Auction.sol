@@ -6,7 +6,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradea
 import "./Card.sol";
 import "./MainToken.sol";
 
-abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUpgradeable {
+abstract contract AuctionCoreUpgdaeable is
+    OwnableUpgradeable,
+    IERC721ReceiverUpgradeable
+{
     event NewBet(address bettor, uint256 cardId, uint256 amount);
 
     struct AuctionInfo {
@@ -18,7 +21,7 @@ abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUp
     }
     struct MyBet {
         uint256 cardId;
-        uint256 betsAcceptedUntilTs;  // works as auction's uuid, so that if bets[cardId] has a different betsAcceptedUntilTs - it is a different auction.
+        uint256 betsAcceptedUntilTs; // works as auction's uuid, so that if bets[cardId] has a different betsAcceptedUntilTs - it is a different auction.
         uint256 amount;
         uint256 startingPrice;
     }
@@ -30,6 +33,7 @@ abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUp
     uint8 _commission;
     uint256 auctionId;
     mapping(uint256 => uint256) auctionIdByCardId;
+    mapping(address => uint256) public gasFreeOpCounter;
 
     event AuctionCreated(uint256 auctionId, uint256 cardId);
     event AuctionCompleted(uint256 auctionId, uint256 cardId, address newOwner);
@@ -39,38 +43,76 @@ abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUp
         __AuctionCore_init_unchained();
     }
 
-    function __AuctionCore_init_unchained() internal onlyInitializing {
-    }
+    function __AuctionCore_init_unchained() internal onlyInitializing {}
 
     function setCardAddress(Card _card) external onlyOwner {
         card = _card;
     }
+
     function setCommission(uint8 commission) external onlyOwner {
         _commission = commission;
     }
 
-    function placeCardToAuction(uint256 cardId, uint256 startingPrice) public {
-        card.safeTransferFrom(msg.sender, address(this), cardId);
+    function placeCardToAuction(
+        uint256 cardId,
+        uint256 startingPrice
+    ) external {
+        _placeCardToAuctionCore(cardId, startingPrice, msg.sender);
+    }
+
+    function placeCardToAuctionGasFree(
+        uint256 cardId,
+        uint256 startingPrice,
+        address caller,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory originalMessage = abi.encodePacked(cardId, startingPrice, gasFreeOpCounter[caller]);
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
+            )
+        );
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == caller, "snec");
+        ++gasFreeOpCounter[caller];
+        _placeCardToAuctionCore(cardId, startingPrice, signer);
+    }
+
+    function _placeCardToAuctionCore(
+        uint256 cardId,
+        uint256 startingPrice,
+        address sender
+    ) internal {
+        require(card.ownerOf(cardId) == sender, "NotOwner");
+        card.safeTransferFrom(sender, address(this), cardId);
         AuctionInfo storage thisAuction = bets[cardId];
         thisAuction.betsAcceptedUntilTs = block.timestamp + 48 * 3600;
         thisAuction.startingPrice = startingPrice;
         thisAuction.bestBet = 0;
         thisAuction.bestBettor = address(0x0);
-        thisAuction.creator = msg.sender;
-        auctionsByUser[msg.sender].push(cardId);
+        thisAuction.creator = sender;
+        auctionsByUser[sender].push(cardId);
         ++auctionId;
         auctionIdByCardId[cardId] = auctionId;
         emit AuctionCreated(auctionId, cardId);
     }
 
     function _takePayment(uint256 amount, address spender) internal virtual;
+
     function _sendPayment(uint256 amount, address receiver) internal virtual;
+
     function _withdraw() internal virtual;
 
-    function placeBet(uint256 cardId, uint256 amount) payable public {
+    function placeBet(uint256 cardId, uint256 amount) public payable {
         AuctionInfo storage thisAuction = bets[cardId];
         require(block.timestamp <= thisAuction.betsAcceptedUntilTs, "TooLate");
-        require(amount > thisAuction.startingPrice && amount > thisAuction.bestBet, "TooFew");
+        require(
+            amount > thisAuction.startingPrice && amount > thisAuction.bestBet,
+            "TooFew"
+        );
         if (thisAuction.bestBettor != address(0x0)) {
             _sendPayment(thisAuction.bestBet, thisAuction.bestBettor);
         }
@@ -81,58 +123,114 @@ abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUp
         emit NewBet(msg.sender, cardId, amount);
 
         trimMyBets(msg.sender);
-        myBets[msg.sender].push(MyBet(cardId, thisAuction.betsAcceptedUntilTs, amount, thisAuction.startingPrice));
+        myBets[msg.sender].push(
+            MyBet(
+                cardId,
+                thisAuction.betsAcceptedUntilTs,
+                amount,
+                thisAuction.startingPrice
+            )
+        );
     }
 
     function takeCard(uint256 cardId) public {
         AuctionInfo storage thisAuction = bets[cardId];
         require(block.timestamp > thisAuction.betsAcceptedUntilTs, "TooEarly");
         thisAuction.betsAcceptedUntilTs = 0;
-        address receiver = thisAuction.bestBettor == address(0x0) ? thisAuction.creator : thisAuction.bestBettor;
+        address receiver = thisAuction.bestBettor == address(0x0)
+            ? thisAuction.creator
+            : thisAuction.bestBettor;
 
-        for (uint256 index = 0; index < auctionsByUser[thisAuction.creator].length - 1; ++index) {
+        for (
+            uint256 index = 0;
+            index < auctionsByUser[thisAuction.creator].length - 1;
+            ++index
+        ) {
             if (auctionsByUser[thisAuction.creator][index] == cardId) {
-                auctionsByUser[thisAuction.creator][index] = auctionsByUser[thisAuction.creator][auctionsByUser[thisAuction.creator].length - 1]; 
-                auctionsByUser[thisAuction.creator][auctionsByUser[thisAuction.creator].length - 1] = cardId;
+                auctionsByUser[thisAuction.creator][index] = auctionsByUser[
+                    thisAuction.creator
+                ][auctionsByUser[thisAuction.creator].length - 1];
+                auctionsByUser[thisAuction.creator][
+                    auctionsByUser[thisAuction.creator].length - 1
+                ] = cardId;
             }
         }
-        require(auctionsByUser[thisAuction.creator][auctionsByUser[thisAuction.creator].length - 1] == cardId, "InternalError");
+        require(
+            auctionsByUser[thisAuction.creator][
+                auctionsByUser[thisAuction.creator].length - 1
+            ] == cardId,
+            "InternalError"
+        );
         auctionsByUser[thisAuction.creator].pop();
 
         card.safeTransferFrom(address(this), receiver, cardId);
-        _sendPayment(thisAuction.bestBet * (100 - _commission) / 100, thisAuction.creator);
-        thisAuction.bestBet = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-        thisAuction.startingPrice = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        _sendPayment(
+            (thisAuction.bestBet * (100 - _commission)) / 100,
+            thisAuction.creator
+        );
+        thisAuction
+            .bestBet = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        thisAuction
+            .startingPrice = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
         thisAuction.bestBettor = address(0x0);
         thisAuction.creator = address(0x0);
 
         emit AuctionCompleted(auctionIdByCardId[cardId], cardId, receiver);
     }
 
-    function auctionsForUser(address user, uint256 offset) view public returns (uint256[10] memory cardIds, uint256[10] memory bestBets, uint256[10] memory untils, uint256[10] memory startingPrices) {
+    function auctionsForUser(
+        address user,
+        uint256 offset
+    )
+        public
+        view
+        returns (
+            uint256[10] memory cardIds,
+            uint256[10] memory bestBets,
+            uint256[10] memory untils,
+            uint256[10] memory startingPrices
+        )
+    {
         uint256 lastElement = offset + 10;
         if (lastElement > auctionsByUser[user].length) {
             lastElement = auctionsByUser[user].length;
         }
         for (uint256 index = offset; index < lastElement; ++index) {
-            require(bets[auctionsByUser[user][index]].creator == user, "InternalError2");
-            cardIds[index-offset] = auctionsByUser[user][index];
-            bestBets[index-offset] = bets[cardIds[index-offset]].bestBet;
-            untils[index-offset] = bets[cardIds[index-offset]].betsAcceptedUntilTs;
-            startingPrices[index-offset]= bets[cardIds[index-offset]].startingPrice;
+            require(
+                bets[auctionsByUser[user][index]].creator == user,
+                "InternalError2"
+            );
+            cardIds[index - offset] = auctionsByUser[user][index];
+            bestBets[index - offset] = bets[cardIds[index - offset]].bestBet;
+            untils[index - offset] = bets[cardIds[index - offset]]
+                .betsAcceptedUntilTs;
+            startingPrices[index - offset] = bets[cardIds[index - offset]]
+                .startingPrice;
         }
     }
 
-    function betsForUser(address user, uint256 offset) view public returns (uint256[10] memory cardIds, uint256[10] memory amounts, uint256[10] memory untils, uint256[10] memory startingPrices) {
+    function betsForUser(
+        address user,
+        uint256 offset
+    )
+        public
+        view
+        returns (
+            uint256[10] memory cardIds,
+            uint256[10] memory amounts,
+            uint256[10] memory untils,
+            uint256[10] memory startingPrices
+        )
+    {
         uint256 lastElement = offset + 10;
         if (lastElement > myBets[user].length) {
             lastElement = myBets[user].length;
         }
         for (uint256 index = offset; index < lastElement; ++index) {
-            cardIds[index-offset] = myBets[user][index].cardId;
-            amounts[index-offset] = myBets[user][index].amount;
-            untils[index-offset] = myBets[user][index].betsAcceptedUntilTs;
-            startingPrices[index-offset]= myBets[user][index].startingPrice;
+            cardIds[index - offset] = myBets[user][index].cardId;
+            amounts[index - offset] = myBets[user][index].amount;
+            untils[index - offset] = myBets[user][index].betsAcceptedUntilTs;
+            startingPrices[index - offset] = myBets[user][index].startingPrice;
         }
     }
 
@@ -148,7 +246,7 @@ abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUp
         }
     }
 
-    function withdraw() onlyOwner public {
+    function withdraw() public onlyOwner {
         _withdraw();
     }
 
@@ -157,21 +255,20 @@ abstract contract AuctionCoreUpgdaeable is OwnableUpgradeable, IERC721ReceiverUp
         address,
         uint256,
         bytes calldata
-    ) public pure returns(bytes4) {
+    ) public pure returns (bytes4) {
         return
-             bytes4(
+            bytes4(
                 keccak256("onERC721Received(address,address,uint256,bytes)")
-             );
+            );
     }
 
     uint256[47] private __gap;
 }
 
-
 contract MaintokenAuction is AuctionCoreUpgdaeable {
     MainToken maintoken;
 
-    function initialize() initializer external {
+    function initialize() external initializer {
         __AuctionCore_init();
     }
 
@@ -193,18 +290,22 @@ contract MaintokenAuction is AuctionCoreUpgdaeable {
     }
 }
 
-
 contract MaticAuction is AuctionCoreUpgdaeable {
-    function initialize() initializer external {
+    function initialize() external initializer {
         __AuctionCore_init();
     }
 
-    function _takePayment(uint256 amount, address /* spender */) internal override {
+    function _takePayment(
+        uint256 amount,
+        address /* spender */
+    ) internal override {
         require(msg.value == amount, "Not enough MATIC");
     }
 
     function _sendPayment(uint256 amount, address receiver) internal override {
-        (bool sent, /* memory data */) = payable(receiver).call{value: amount}("");
+        (bool sent /* memory data */, ) = payable(receiver).call{value: amount}(
+            ""
+        );
         require(sent, "Failed to send Matic");
     }
 

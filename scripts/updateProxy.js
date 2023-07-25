@@ -17,12 +17,20 @@ async function main() {
   const auctionProxy = getNamedAccount("auctionProxy")
   const maticAuctionProxy = getNamedAccount("maticAuctionProxy")
 
-  // await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000}); console.log('Card upgraded');
-  console.log("Updating arena", arenaProxy);
+  // console.log("Updating card", cardProxy)
+  // await upgrades.forceImport(cardProxy, Card)
+  // await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000, }); console.log('Card upgraded');
+  
+  // console.log("Updating arena", arenaProxy);
   // await upgrades.forceImport(arenaProxy, Arena)
-  await upgrades.upgradeProxy(arenaProxy, Arena, {gasLimit: 800000}); console.log('Arena upgraded');
-  //await upgrades.upgradeProxy(mainToken, MainToken, {gasLimit: 800000});
-  // await upgrades.upgradeProxy(auctionProxy, Auction, {gasLimit: 800000}); console.log("Auction upgraded")
+  // await upgrades.upgradeProxy(arenaProxy, Arena, {gasLimit: 800000, unsafeSkipStorageCheck: true, redeployImplementation: 'always'}); console.log('Arena upgraded');
+  
+  // console.log("Updating maintoken", mainToken);
+  // await upgrades.upgradeProxy(mainToken, MainToken, {gasLimit: 800000}); console.log("maintoken updated");
+
+  console.log("Updating Auction", auctionProxy);
+  await upgrades.upgradeProxy(auctionProxy, Auction, {gasLimit: 800000}); console.log("Auction upgraded")
+  
   // await upgrades.upgradeProxy(maticAuctionProxy, MaticAuction, {gasLimit: 800000}); console.log("MaticAuction upgraded")
 }
 

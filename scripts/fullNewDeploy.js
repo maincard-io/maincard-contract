@@ -10,13 +10,15 @@ async function main() {
   const arenaProxy = getNamedAccount("arenaProxy")
   const auctionProxy = getNamedAccount("auctionProxy")
   const maticAuctionProxy = "0x0"
+  const tournamentProxy = "0x0"
 
   const CARD_DEPLOYED = true;
   const ARENA_DEPLOYED = true;
   const AUCTION_DEPLOYED = true;
   const MAINTOKEN_DEPOYED = true;
   const MAGICBOX_DEPLOYED = true;
-  const MATIC_AUCTION_DEPLOYED = false;
+  const MATIC_AUCTION_DEPLOYED = true;
+  const TOURNAMENT_DEPLOYED = false;
 
   const Card = await ethers.getContractFactory("Card");
   const card = await (!CARD_DEPLOYED ? upgrades.deployProxy(Card) : Card.attach(cardProxy));
@@ -54,6 +56,12 @@ async function main() {
   await maticauction.deployed()
   console.log("MaticAuction deployed to:", maticauction.address);
 
+  const Tournament = await ethers.getContractFactory("Tournament")
+  const tournament = await (!TOURNAMENT_DEPLOYED ? upgrades.deployProxy(
+    Tournament, [mainToken.address, card.address]
+  ) : Tournament.attach(tournamentProxy))
+  await tournament.deployed()
+  console.log("MaticAuction deployed to:", tournament.address);
   /*
 
   const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
@@ -112,12 +120,14 @@ async function main() {
   const WITHDRAWER_ROLE = await card.WITHDRAWER_ROLE();
   const grantWithdrawerTx = await card.grantRole(WITHDRAWER_ROLE, getNamedAccount("fundOwnerWallet"))
   await grantWithdrawerTx.wait()
-  */
-
+  
   const setCardForMaticAuctionTx = await maticauction.setCardAddress(card.address);
   await setCardForMaticAuctionTx.wait()
   const setMaticAuctionCommission = await maticauction.setCommission(5)
   await setMaticAuctionCommission.wait()
+  */
+
+  const setTournamentFeeTx = await tournament.setTournamentParticipationFee(ethers.utils.formatEthers("0.2"))
 }
 
 main()
