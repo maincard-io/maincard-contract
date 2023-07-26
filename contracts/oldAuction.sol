@@ -30,7 +30,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
     uint8 _commission;
     uint256 auctionId;
     mapping(uint256 => uint256) auctionIdByCardId;
-    mapping(address => uint256) public gasFreeOpsCounter;
+    mapping(address => uint256) public gasFreeOpCounter;
 
     event AuctionCreated(uint256 auctionId, uint256 cardId);
     event AuctionCompleted(uint256 auctionId, uint256 cardId, address newOwner);
@@ -66,7 +66,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         bytes32 _r,
         bytes32 _s
     ) external {
-        bytes memory originalMessage = abi.encodePacked(cardId, startingPrice, gasFreeOpsCounter[sender]);
+        bytes memory originalMessage = abi.encodePacked(cardId, startingPrice, gasFreeOpCounter[sender]);
         bytes32 prefixedHashMessage = keccak256(
             abi.encodePacked(
                 "\x19Ethereum Signed Message:\n32",
@@ -75,7 +75,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         );
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
         require(signer == sender, "sins");
-        ++gasFreeOpsCounter[sender];
+        ++gasFreeOpCounter[sender];
         _placeCardToAuctionCore(cardId, startingPrice, signer);
     }
 
@@ -110,7 +110,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         bytes32 _r,
         bytes32 _s
     ) external {
-        bytes memory originalMessage = abi.encodePacked(cardId, amount, gasFreeOpsCounter[sender]);
+        bytes memory originalMessage = abi.encodePacked(cardId, amount, gasFreeOpCounter[sender]);
         bytes32 prefixedHashMessage = keccak256(
             abi.encodePacked(
                 "\x19Ethereum Signed Message:\n32",
@@ -119,7 +119,7 @@ contract Auction is OwnableUpgradeable, IERC721ReceiverUpgradeable {
         );
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
         require(signer == sender, "snec");
-        ++gasFreeOpsCounter[sender];
+        ++gasFreeOpCounter[sender];
         _placeBetCore(cardId, amount, signer);
     }
 

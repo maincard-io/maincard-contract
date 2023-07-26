@@ -4,7 +4,7 @@ const { ethers, upgrades } = require("hardhat");
 const Regular = 0;
 
 describe("Auction tests", () => {
-    let card, auction, maticAuction, maintoken;
+    let card, auction, maticAuction, maintoken, oldAuction;
     let admin, alice, bob, carl;
 
     let mintNewCard, placeCard, placeCardToMaticAuction,
@@ -17,12 +17,14 @@ describe("Auction tests", () => {
         const Card = await ethers.getContractFactory("Card");
         const Maintoken = await ethers.getContractFactory("FreeToken");
         const Auction = await ethers.getContractFactory("MaintokenAuction");
-        const MaticAuction = await ethers.getContractFactory("MaticAuction")
+        const MaticAuction = await ethers.getContractFactory("MaticAuction");
+        const OldAuction = await ethers.getContractFactory("Auction");
 
         card = await upgrades.deployProxy(Card);
         maintoken = await Maintoken.deploy();
         auction = await upgrades.deployProxy(Auction);
         maticAuction = await upgrades.deployProxy(MaticAuction);
+        oldAuction = await upgrades.deployProxy(OldAuction);
 
         await auction.setMaintokenAddress(maintoken.address);
         await maintoken.mint(alice.address, "10000000000000000000000000")
@@ -42,9 +44,11 @@ describe("Auction tests", () => {
 
         await auction.setCardAddress(card.address);
         await maticAuction.setCardAddress(card.address);
+        await oldAuction.setCardAddress(card.address);
 
         await auction.setCommission(5)
         await maticAuction.setCommission(4)
+        await oldAuction.setCommission(5)
 
         await card.setTokenPrice("10000000000000000000", 0);
         await card.setTokenPrice("100000000000000000000", 1);
@@ -172,32 +176,63 @@ describe("Auction tests", () => {
         await card.connect(bob).functions['safeTransferFrom(address,address,uint256)'](bob.address, gaslessMan.address, cardId);
 
         // This is done on a frontend
-        const makeBetMessage = ethers.utils.arrayify(
+        const sendToAuctionMessage = ethers.utils.arrayify(
             ethers.utils.keccak256(
                 ethers.utils.solidityPack(
                     [
                         "uint256", "uint256", "uint256"
                     ],
                     [
-                        await arenaAsAlice.gasFreeOpCounter(gaslessMan.address),
-
-                        eventId, mintedTokenId1, FirstWon,
-                        eventId, mintedTokenId2, FirstWon,
+                        cardId,
+                        "10",
+                        await auction.gasFreeOpCounter(gaslessMan.address),
                     ])
             )
         )
-        const signatureInfo = ethers.utils.splitSignature(await gaslessMan.signMessage(makeBetMessage))
+        const signatureInfo = ethers.utils.splitSignature(await gaslessMan.signMessage(sendToAuctionMessage))
 
         // then eventId, tokenId, choice, and signatureInfo is sent to backend
         // and placed by someone
-        await arenaAsAlice.makeBetsGasFree(
-            [eventId, eventId],
-            [mintedTokenId1, mintedTokenId2],
-            [FirstWon, FirstWon],
+        await auction.placeCardToAuctionGasFree(
+            cardId, 10,
             gaslessMan.address,
             signatureInfo.v, signatureInfo.r, signatureInfo.s
         )
 
-        expect(await card.ownerOf(mintedTokenId1)).to.be.eq(arenaAsAlice.address)
+        expect(await card.ownerOf(cardId)).to.be.eq(auction.address)
+    })
+
+    it("Old auction supports gasless ops", async () => {
+        const cardId = await mintNewCard(bob);
+        const gaslessMan = ethers.Wallet.createRandom();
+        await card.connect(bob).functions['safeTransferFrom(address,address,uint256)'](bob.address, gaslessMan.address, cardId);
+
+        // This is done on a frontend
+        const sendToAuctionMessage = ethers.utils.arrayify(
+            ethers.utils.keccak256(
+                ethers.utils.solidityPack(
+                    [
+                        "uint256", "uint256", "uint256"
+                    ],
+                    [
+                        cardId,
+                        "10",
+                        await oldAuction.gasFreeOpCounter(gaslessMan.address),
+                    ])
+            )
+        )
+        const signatureInfo = ethers.utils.splitSignature(await gaslessMan.signMessage(sendToAuctionMessage))
+
+        await card.setAuctionAddress(oldAuction.address);
+
+        // then eventId, tokenId, choice, and signatureInfo is sent to backend
+        // and placed by someone
+        await oldAuction.placeCardToAuctionGasFree(
+            cardId, 10,
+            gaslessMan.address,
+            signatureInfo.v, signatureInfo.r, signatureInfo.s
+        )
+
+        expect(await card.ownerOf(cardId)).to.be.eq(oldAuction.address)
     })
 });

@@ -107,6 +107,28 @@ abstract contract AuctionCoreUpgdaeable is
     function _withdraw() internal virtual;
 
     function placeBet(uint256 cardId, uint256 amount) public payable {
+        _placeBetCore(cardId, amount, msg.sender);
+    }
+
+    function placeBetGasFree(uint256 cardId, uint256 amount, address sender,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory originalMessage = abi.encodePacked(cardId, amount, gasFreeOpCounter[sender]);
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
+            )
+        );
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == sender, "snec");
+        ++gasFreeOpCounter[sender];
+        _placeBetCore(cardId, amount, signer);
+    }
+
+    function _placeBetCore(uint256 cardId, uint256 amount, address sender) internal {
         AuctionInfo storage thisAuction = bets[cardId];
         require(block.timestamp <= thisAuction.betsAcceptedUntilTs, "TooLate");
         require(
@@ -116,14 +138,14 @@ abstract contract AuctionCoreUpgdaeable is
         if (thisAuction.bestBettor != address(0x0)) {
             _sendPayment(thisAuction.bestBet, thisAuction.bestBettor);
         }
-        _takePayment(amount, msg.sender);
+        _takePayment(amount, sender);
         thisAuction.bestBet = amount;
-        thisAuction.bestBettor = msg.sender;
+        thisAuction.bestBettor = sender;
 
-        emit NewBet(msg.sender, cardId, amount);
+        emit NewBet(sender, cardId, amount);
 
-        trimMyBets(msg.sender);
-        myBets[msg.sender].push(
+        trimMyBets(sender);
+        myBets[sender].push(
             MyBet(
                 cardId,
                 thisAuction.betsAcceptedUntilTs,
