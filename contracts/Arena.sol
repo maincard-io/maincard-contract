@@ -547,10 +547,10 @@ contract Arena is IArena, OwnableUpgradeable {
         bytes32 _s
     ) external {
         bytes memory originalMessage = abi.encodePacked(
+            gasFreeOpCounter[caller],
             callId,
             cardId,
-            choice,
-            gasFreeOpCounter[caller]
+            choice
         );
         bytes32 prefixedHashMessage = keccak256(
             abi.encodePacked(
