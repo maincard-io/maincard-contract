@@ -407,8 +407,8 @@ contract Arena is IArena, OwnableUpgradeable {
                 : calls[callId].secondParticipantCard;
             choices[index] = ownerIsFirst
                 ? calls[callId].choice
-                : invertChoice(calls[cardIds[i - offset]].choice);
-            results[index] = eventInfos[eventIds[i - offset]].result;
+                : invertChoice(calls[callId].choice);
+            results[index] = eventInfos[eventIds[index]].result;
         }
         return (callIds, eventIds, choices, results, cardIds);
     }

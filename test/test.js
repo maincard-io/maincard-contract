@@ -550,4 +550,105 @@ describe("Arena tests", () => {
         expect(await card.ownerOf(mintedTokenId1)).to.be.eq(arenaAsAlice.address)
         expect(await card.ownerOf(mintedTokenId2)).to.be.eq(arenaAsAlice.address)
     })
+
+
+    it("Checks if list of call participations is updated", async () => {
+        const gaslessMan1 = ethers.Wallet.createRandom();
+        const gaslessMan2 = ethers.Wallet.createRandom();
+
+        const callIds = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
+        const eventIds = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
+        const cardIds1 = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
+        const cardIds2 = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
+        
+        for (let i = 0; i < 10; ++i) {
+            const eventId = await createEvent(currentBlockTime + halfHour);
+            eventIds[i] = eventId;
+            const mintTx1 = await card.freeMint(gaslessMan1.address, Regular);
+            const mintEffects1 = await mintTx1.wait();
+            const mintedTokenId1 = mintEffects1.events.filter(e => e.event === "Transfer")[0].args[2];
+            cardIds1[i] = mintedTokenId1;
+            const mintTx2 = await card.freeMint(gaslessMan2.address, Regular);
+            const mintEffects2 = await mintTx2.wait();
+            const mintedTokenId2 = mintEffects2.events.filter(e => e.event === "Transfer")[0].args[2];
+            cardIds2[i] = mintedTokenId2;
+
+            const sendCard1 = ethers.utils.arrayify(
+                ethers.utils.keccak256(
+                    ethers.utils.solidityPack(
+                        [
+                            "uint256", "uint256", "uint256", "uint8"
+                        ],
+                        [
+                            await arena.gasFreeOpCounter(gaslessMan1.address),
+                            eventId,
+                            mintedTokenId1,
+                            4
+                        ])
+                )
+            )
+
+            const signature1Info = ethers.utils.splitSignature(await gaslessMan1.signMessage(sendCard1))
+            
+            const tx = await arenaAsAlice.createCallGasFree(
+                eventId,
+                mintedTokenId1,
+                4,
+                gaslessMan1.address,
+                signature1Info.v,
+                signature1Info.r,
+                signature1Info.s
+            )
+            const createCallEffects = await tx.wait()
+            const callCreatedEvent = createCallEffects.events.filter(e => e.event === 'NewCall')
+            expect(callCreatedEvent.length).to.be.eq(1)
+
+            const callId = callCreatedEvent[0].args.callId;
+            callIds[i] = callId.valueOf();
+
+            const acceptByCard2 = ethers.utils.arrayify(
+                ethers.utils.keccak256(
+                    ethers.utils.solidityPack(
+                        [
+                            "uint256", "uint256", "uint256", "uint8"
+                        ],
+                        [
+                            await arena.gasFreeOpCounter(gaslessMan2.address),
+                            callId,
+                            mintedTokenId2,
+                            2
+                        ])
+                )
+            )
+
+            const signature2Info = ethers.utils.splitSignature(await gaslessMan2.signMessage(acceptByCard2))
+
+            await arenaAsAlice.acceptCallGasFree(
+                callId,
+                mintedTokenId2,
+                2,
+                gaslessMan2.address,
+                signature2Info.v,
+                signature2Info.r,
+                signature2Info.s,
+            )
+
+            expect(await arenaAsAlice.callsByAddressCount(gaslessMan1.address)).to.be.equal(i + 1);
+            expect(await arenaAsAlice.callsByAddressCount(gaslessMan2.address)).to.be.equal(i + 1);
+
+            // const man1Info = await arenaAsAlice.callsByAddressAndIndex(gaslessMan1.address, 0)
+            // const man2Info = await arenaAsAlice.callsByAddressAndIndex(gaslessMan2.address, 0)
+
+            const [u1_callIds, u1_eventIds, u1_choices, u1_results, u1_cardIds] = await arenaAsAlice.callsByAddressAndIndex(gaslessMan1.address, 0)
+            const [u2_callIds, u2_eventIds, u2_choices, u2_results, u2_cardIds] = await arenaAsAlice.callsByAddressAndIndex(gaslessMan2.address, 0)
+
+            expect(u1_callIds).to.be.deep.eq(callIds);
+            expect(u2_callIds).to.be.deep.eq(callIds);
+            expect(u1_cardIds).to.be.deep.eq(cardIds1);
+            expect(u2_cardIds).to.be.deep.eq(cardIds2);
+        }
+
+
+
+    })
 })
