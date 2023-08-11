@@ -30,7 +30,7 @@ async function main(cards) {
   ]
 
   const mcallContract = new ethers.Contract(mcall, mcallabi, admin)
-  let pos = 0;
+  let pos = 720;
   const batchSize = 120;
   let agg = [];
 
@@ -50,6 +50,24 @@ async function main(cards) {
     pos += batchSize;
   }
 }
+
+/*
+List of cards is compued like:
+
+with tokens_on_arena as (select token_id from polygon.nft_owners
+where contract_address = '0x3D9e6bD43aC6afc78f3D8C8df6811D9aB53678c1' and
+      owner_address = '0x24c6f0C81Cc8E6fc9348Fb3ab5338F903A5B7959')
+
+select * from tokens_on_arena
+order by token_id desc;
+
+using transpose.io.
+
+It contains some cards which are in progress,
+by design it is impossible to remove them,
+so it is safe. Yes, we are paying some extra costs
+for trying, but SQL is simpler on the other hand.
+*/
 
 main([
   57867,
