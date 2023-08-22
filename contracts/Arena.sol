@@ -91,14 +91,23 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 betsAcceptedUntilTs,
         bytes32 descriptionHash
     ) public override onlyOwner {
-        require(!_eventExists(eventId), "Event already exists");
-        require(betsAcceptedUntilTs > block.timestamp, "Event is in the past");
+        require(!_eventExists(eventId), "AX");
+        require(betsAcceptedUntilTs > block.timestamp, "EIP");
         eventInfos[eventId] = EventInfo(
             betsAcceptedUntilTs,
             descriptionHash,
             MatchResult.MatchIsInProgress
         );
-        require(_eventExists(eventId));
+        require(_eventExists(eventId), "E0");
+    }
+
+    function updateEvent(
+        uint256 eventId,
+        uint256 betsAcceptedUntilTs
+    ) public onlyOwner {
+        require(_eventExists(eventId), "ENE");
+        require(eventInfos[eventId].result == MatchResult.MatchIsInProgress, "NIP");
+        eventInfos[eventId].betsAcceptedUntilTs = betsAcceptedUntilTs;
     }
 
     function _eventExists(uint256 eventId) internal view returns (bool) {

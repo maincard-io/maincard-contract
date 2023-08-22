@@ -327,7 +327,7 @@ contract Card is
         revert("Unknown rarity");
     }
 
-    function freezePeriod(CardRarity rarity) internal pure returns (uint32) {
+    function freezePeriod(CardRarity rarity) public pure returns (uint32) {
         if (rarity == CardRarity.Common) return 3*3600;
         if (rarity == CardRarity.Rare) return 6*3600;
         if (rarity == CardRarity.Epic) return 12*3600;
