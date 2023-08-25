@@ -417,7 +417,7 @@ contract Card is
         uint256 cost = recoveryMaintokens(cardId);
         require(cost > 0, "Nothing to restore");
         _maintoken.transferFrom(msg.sender, address(this), cost);
-        _restoreLive(cardId);
+        _restoreLive(cardId, msg.sender);
     }
 
     function restoreLiveGasFree(uint256 cardId, address caller, uint8 _v, bytes32 _r, bytes32 _s) external {
@@ -438,7 +438,7 @@ contract Card is
         uint256 cost = recoveryMaintokens(cardId);
         require(cost > 0, "Nothing to restore");
         _maintoken.transferFrom(signer, address(this), cost);
-        _restoreLive(cardId);        
+        _restoreLive(cardId, signer);        
     }
 
     /* Pay with MATIC */
@@ -446,11 +446,11 @@ contract Card is
         uint256 cost = recoveryMatic(cardId);
         require(cost > 0, "Nothing to restore");
         require(msg.value == cost, "Not enough MATIC");
-        _restoreLive(cardId);
+        _restoreLive(cardId, msg.sender);
     }
 
-    function _restoreLive(uint256 cardId) internal {
-        require(ownerOf(cardId) == msg.sender);
+    function _restoreLive(uint256 cardId, address signer) internal {
+        require(ownerOf(cardId) == signer, "ryoc");
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
         _livesRemaining[cardId] = newLives;
