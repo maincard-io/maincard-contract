@@ -5,22 +5,30 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC721Upgradeable.sol";
 
+import "./ICard.sol";
+
 contract Tournament is AccessControlUpgradeable {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant TOURNAMENT_MANAGER_ROLE = keccak256("TOURNAMENT_MANAGER_ROLE");
 
     IERC20Upgradeable public _token;
-    IERC721Upgradeable public _card;
-    uint16 public _tournamentId;
+    ICard public _card;
 
-    mapping(uint256 => uint256) public _rewards;
-    uint256 public _tournamentParticipationFee;
+    struct TournamentInfo {
+        uint256 participationFee;
+        bool isInitialized;
+        ICard.CardRarity minRequiredRarity;
+        uint256 rewardsCollected;
+    }
+
+    mapping(uint256 => TournamentInfo) public _torunamentInfos;
     mapping(uint256 => mapping(address => bool)) public _registeredPlayers;
+    mapping(address => uint256) public _gasFreeOpCounter;
 
     event RegisteredForTournament(address indexed player, uint256 cardId);
 
     function initialize(
         IERC20Upgradeable token,
-        IERC721Upgradeable card
+        ICard card
     ) public initializer {
         __AccessControl_init();
         _token = token;
@@ -28,22 +36,29 @@ contract Tournament is AccessControlUpgradeable {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function setTournamentParticipationFee(uint256 fee) external {
+    function setTournamentRules(
+        uint256 tournamentId,
+        uint256 fee,
+        ICard.CardRarity minRequiredRarity
+    ) external {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "msg.sender should have granted MINTER_ROLE"
-        ); 
-        _tournamentParticipationFee = fee;
+            "msg.sender should have granted TOURNAMENT_MANAGER_ROLE"
+        );
+        _torunamentInfos[tournamentId].isInitialized = true;
+        _torunamentInfos[tournamentId].participationFee = fee;
+        _torunamentInfos[tournamentId].minRequiredRarity = minRequiredRarity;
     }
 
     function completeTournament(
+        uint256 tournamentId,
         address[] calldata winners,
         uint256[] calldata payouts
     ) external {
         require(
-            hasRole(MINTER_ROLE, msg.sender),
-            "msg.sender should have granted MINTER_ROLE"
-        ); 
+            hasRole(TOURNAMENT_MANAGER_ROLE, msg.sender),
+            "msg.sender should have granted TOURNAMENT_MANAGER_ROLE"
+        );
         require(
             winners.length == payouts.length,
             "Tournament: winners and payouts length mismatch"
@@ -51,40 +66,75 @@ contract Tournament is AccessControlUpgradeable {
         uint256 totalPayout = 0;
         for (uint256 i = 0; i < winners.length; ++i) {
             require(
-                _registeredPlayers[_tournamentId][winners[i]],
+                _registeredPlayers[tournamentId][winners[i]],
                 "Tournament: winner is not registered"
             );
             totalPayout += payouts[i];
         }
         require(
-            totalPayout <= _rewards[_tournamentId],
+            totalPayout >= _torunamentInfos[tournamentId].rewardsCollected,
             "Tournament: insufficient balance"
         );
+        _torunamentInfos[tournamentId].rewardsCollected -= totalPayout;
+
         for (uint256 i = 0; i < winners.length; ++i) {
             require(
                 _token.transfer(winners[i], payouts[i]),
                 "Tournament: payout failed"
             );
         }
-        ++_tournamentId;
     }
 
-    function registerForTournament(uint256 cardId) external {
-        // TODO: check participation schedule
-        require(_card.ownerOf(cardId) == msg.sender, "Tournament: not owner");
-        require(
-            _registeredPlayers[_tournamentId][msg.sender] == false,
-            "Tournament: already registered"
+    function registerForTournamentGasFree(
+        uint256 cardId,
+        uint256 tournamentId,
+        address caller,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory originalMessage = abi.encodePacked(
+            _gasFreeOpCounter[caller],
+            cardId,
+            tournamentId
         );
-        require(
-            _token.transferFrom(
-                msg.sender,
-                address(this),
-                _tournamentParticipationFee
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
             )
         );
-        _registeredPlayers[_tournamentId][msg.sender] = true;
-        _rewards[_tournamentId] += _tournamentParticipationFee;
-        emit RegisteredForTournament(msg.sender, cardId);
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == caller, "snec");
+        ++_gasFreeOpCounter[caller];
+        require(_card.ownerOf(cardId) == caller, "Tournament: not owner");
+        require(
+            _torunamentInfos[tournamentId].isInitialized,
+            "Tournament: not started"
+        );
+        require(
+            _card.isLessRareOrEq(
+                _torunamentInfos[tournamentId].minRequiredRarity,
+                _card.getRarity(cardId)
+            ),
+            "Tournament: wrong rarity"
+        );
+        // To avoid double fees
+        require(
+            _registeredPlayers[tournamentId][caller] == false,
+            "Tournament: already registered"
+        );
+        _registeredPlayers[tournamentId][caller] == true;
+        require(
+            _token.transferFrom(
+                caller,
+                address(this),
+                _torunamentInfos[tournamentId].participationFee
+            )
+        );
+        _torunamentInfos[tournamentId].rewardsCollected += _torunamentInfos[
+            tournamentId
+        ].participationFee;
+        emit RegisteredForTournament(caller, cardId);
     }
 }

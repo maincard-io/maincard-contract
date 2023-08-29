@@ -17,4 +17,7 @@ interface ICard is IERC721Upgradeable {
     function getRarity(uint256 cardId) external view returns(CardRarity);
     function rewardMaintokens(uint256 cardId) external view returns(uint256);
     function recoveryMaintokens(uint256 cardId) external view returns(uint256);
+
+    // `a` is not more rare than `b`.
+    function isLessRareOrEq(CardRarity a, CardRarity b) pure external returns (bool);
 }

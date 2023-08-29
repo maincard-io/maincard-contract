@@ -24,6 +24,9 @@ const DATA = {
     maticAuctionProxy: {
       "polygon": "0x094A3B77fE25bc8De4F6e679e61A00c1e1529e25",
     },
+    tournament: {
+      "polygon": "0x3f4A8705C965Ef1BE0B4C1d2731Cd8782AAAc1b8",
+    }
     arenaProxy: {
       "mumbai": "0x69E91f33424a211A0B70e879169A0b2684ce2829",
       "polygon": "0x24c6f0C81Cc8E6fc9348Fb3ab5338F903A5B7959",
@@ -36,6 +39,9 @@ const DATA = {
       "mumbai": "0x98A3995FA46a386fd865EBa16544794E79889097",
       "polygon": "0x98A3995FA46a386fd865EBa16544794E79889097",
       "hardhat": "0x98A3995FA46a386fd865EBa16544794E79889097",
+    },
+    backendAccount: {
+      "polygon": "0x83d8c7Bb2cEee5E12cAfE7339E2319d1a6c5f5FA",
     },
     freeToken: {
       "mumbai": "0xe3e3a3C7a3d889f3281e53A7F8BC0296C2fCc781",

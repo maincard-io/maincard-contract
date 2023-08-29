@@ -1,8 +1,8 @@
 {
   "manifestVersion": "3.2",
   "admin": {
-    "address": "0x7eAd9599cCB9787491282073d320dFE3D92583f7",
-    "txHash": "0xc205e99f1acbca0f7d6587396626deb68b7af8af6ad9d20ca19b5eb7b030ecf5"
+    "address": "0x6842882C1E98D4673172B2d19164324807393B48",
+    "txHash": "0x34153b82d85ee2054319fe04c0a2df71a03b146380a6f2e5a83f2877f86e6351"
   },
   "proxies": [
     {
@@ -67,6 +67,11 @@
     },
     {
       "address": "0x24c6f0C81Cc8E6fc9348Fb3ab5338F903A5B7959",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x3f4A8705C965Ef1BE0B4C1d2731Cd8782AAAc1b8",
+      "txHash": "0xc1570294b4912ced2cab7e15b960b57cdbee46b8cc47e9657424730d2551811b",
       "kind": "transparent"
     }
   ],
@@ -18859,6 +18864,221 @@
           "t_uint64": {
             "label": "uint64",
             "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "5df3afd4282c4f2ea1242c822326b44a73be4e5df0905be7e19b74876eadb6c4": {
+      "address": "0x2DB5d203a3E3eD526A5F09Bd2144c817041A6B64",
+      "txHash": "0x1ce821887b9851913dcec1c5ec8030132da078efd7bb0a54b052b8cdd3642a5f",
+      "layout": {
+        "solcVersion": "0.8.17",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC165Upgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:41"
+          },
+          {
+            "label": "_roles",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)34_storage)",
+            "contract": "AccessControlUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:61"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "AccessControlUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:259"
+          },
+          {
+            "label": "_token",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_contract(IERC20Upgradeable)661",
+            "contract": "Tournament",
+            "src": "contracts/Tournament.sol:13"
+          },
+          {
+            "label": "_card",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_contract(ICard)2251",
+            "contract": "Tournament",
+            "src": "contracts/Tournament.sol:14"
+          },
+          {
+            "label": "_torunamentInfos",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_mapping(t_uint256,t_struct(TournamentInfo)2280_storage)",
+            "contract": "Tournament",
+            "src": "contracts/Tournament.sol:23"
+          },
+          {
+            "label": "_registeredPlayers",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_bool))",
+            "contract": "Tournament",
+            "src": "contracts/Tournament.sol:24"
+          },
+          {
+            "label": "_gasFreeOpCounter",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "Tournament",
+            "src": "contracts/Tournament.sol:25"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(ICard)2251": {
+            "label": "contract ICard",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IERC20Upgradeable)661": {
+            "label": "contract IERC20Upgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_enum(CardRarity)2210": {
+            "label": "enum ICard.CardRarity",
+            "members": [
+              "Common",
+              "Rare",
+              "Epic",
+              "Legendary",
+              "Mythic"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)34_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_bool))": {
+            "label": "mapping(uint256 => mapping(address => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(TournamentInfo)2280_storage)": {
+            "label": "mapping(uint256 => struct Tournament.TournamentInfo)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(RoleData)34_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(TournamentInfo)2280_storage": {
+            "label": "struct Tournament.TournamentInfo",
+            "members": [
+              {
+                "label": "participationFee",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "isInitialized",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "minRequiredRarity",
+                "type": "t_enum(CardRarity)2210",
+                "offset": 1,
+                "slot": "1"
+              },
+              {
+                "label": "rewardsCollected",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
           },
           "t_uint8": {
             "label": "uint8",

@@ -4,12 +4,13 @@ const getNamedAccount = require("./DEPLOYMENTS.js")
 async function main() {
   const [admin] = await ethers.getSigners();
   console.log("Admin: ", admin);
-  
+
   const mainToken = getNamedAccount("mainToken")
   const cardProxy = getNamedAccount("cardProxy")
   const arenaProxy = getNamedAccount("arenaProxy")
   const auctionProxy = getNamedAccount("auctionProxy")
-  const maticAuctionProxy = "0x0"
+  const backend = getNamedAccount("backendAccount");
+  const maticAuctionProxy = getNamedAccount("maticAuctionProxy")
   const tournamentProxy = "0x0"
 
   const CARD_DEPLOYED = true;
@@ -42,12 +43,12 @@ async function main() {
 
   const MagicBox = await ethers.getContractFactory("MagicBox");
   const magicBox = await (!MAGICBOX_DEPLOYED ?
-                          MagicBox.deploy(getNamedAccount("vrfSubscriptionId"),
-                                          getNamedAccount("vrfCoordinator"),
-                                          400000,
-                                          getNamedAccount("vrfKeyHash"),
-                                          card.address) :
-                          MagicBox.attach(getNamedAccount("magicBox")));
+    MagicBox.deploy(getNamedAccount("vrfSubscriptionId"),
+      getNamedAccount("vrfCoordinator"),
+      400000,
+      getNamedAccount("vrfKeyHash"),
+      card.address) :
+    MagicBox.attach(getNamedAccount("magicBox")));
   await magicBox.deployed();
   console.log("MagicBox deployed to:", magicBox.address);
 
@@ -58,10 +59,10 @@ async function main() {
 
   const Tournament = await ethers.getContractFactory("Tournament")
   const tournament = await (!TOURNAMENT_DEPLOYED ? upgrades.deployProxy(
-    Tournament, [mainToken.address, card.address]
+    Tournament, [maintoken.address, card.address]
   ) : Tournament.attach(tournamentProxy))
   await tournament.deployed()
-  console.log("MaticAuction deployed to:", tournament.address);
+  console.log("Tournament deployed to:", tournament.address);
   /*
 
   const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
@@ -127,7 +128,9 @@ async function main() {
   await setMaticAuctionCommission.wait()
   */
 
-  const setTournamentFeeTx = await tournament.setTournamentParticipationFee(ethers.utils.formatEthers("0.2"))
+  const TOURNAMENT_MANAGER_ROLE = await tournament.TOURNAMENT_MANAGER_ROLE();
+  const grantTournamentManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, admin.address);
+  await grantTournamentManagerRoleTx.wait();
 }
 
 main()
