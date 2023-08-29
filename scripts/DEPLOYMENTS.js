@@ -26,7 +26,7 @@ const DATA = {
     },
     tournament: {
       "polygon": "0x3f4A8705C965Ef1BE0B4C1d2731Cd8782AAAc1b8",
-    }
+    },
     arenaProxy: {
       "mumbai": "0x69E91f33424a211A0B70e879169A0b2684ce2829",
       "polygon": "0x24c6f0C81Cc8E6fc9348Fb3ab5338F903A5B7959",
@@ -68,19 +68,19 @@ const DATA = {
       "mumbai":        "40000000000000000",
     },
     tokenUpgradePrice0: {
-      "polygon":     "2000000000000000000",
+      "polygon":     "10000000000000000000",
       "mumbai":         "5000000000000000",
     },
     tokenUpgradePrice1: {
-      "polygon":    "20000000000000000000",
+      "polygon":    "1000000000000000000000",
       "mumbai":         "6000000000000000",
     },
     tokenUpgradePrice2: {
-      "polygon":   "200000000000000000000",
+      "polygon":   "50000000000000000000000",
       "mumbai":         "7000000000000000",
     },
     tokenUpgradePrice3: {
-      "polygon":  "2000000000000000000000",
+      "polygon":  "1000000000000000000000000",
       "mumbai":         "8000000000000000",
     },
     "fundOwnerWallet": {
