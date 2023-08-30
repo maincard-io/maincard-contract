@@ -68,19 +68,23 @@ const DATA = {
       "mumbai":        "40000000000000000",
     },
     tokenUpgradePrice0: {
+      "comment":     "  .                 ",
       "polygon":     "10000000000000000000",
-      "mumbai":         "5000000000000000",
+      "mumbai":          "5000000000000000",
     },
     tokenUpgradePrice1: {
-      "polygon":    "1000000000000000000000",
-      "mumbai":         "6000000000000000",
+      "comment":    "    .                 ",
+      "polygon":     "100000000000000000000",
+      "mumbai":           "6000000000000000",
     },
     tokenUpgradePrice2: {
-      "polygon":   "50000000000000000000000",
+      "comment":   "   .                 ",
+      "polygon":   "500000000000000000000",
       "mumbai":         "7000000000000000",
     },
     tokenUpgradePrice3: {
-      "polygon":  "1000000000000000000000000",
+      "comment":  "    .                 ",
+      "polygon":  "1000000000000000000000",
       "mumbai":         "8000000000000000",
     },
     "fundOwnerWallet": {
