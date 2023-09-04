@@ -16,6 +16,7 @@ abstract contract AuctionCoreUpgdaeable is
         address creator;
         uint256 betsAcceptedUntilTs;
         uint256 startingPrice;
+        string currency;
         uint256 bestBet;
         address bestBettor;
     }
@@ -24,6 +25,7 @@ abstract contract AuctionCoreUpgdaeable is
         uint256 betsAcceptedUntilTs; // works as auction's uuid, so that if bets[cardId] has a different betsAcceptedUntilTs - it is a different auction.
         uint256 amount;
         uint256 startingPrice;
+        string  currency;
     }
     mapping(uint256 => AuctionInfo) public bets;
     mapping(address => uint256[]) auctionsByUser;
@@ -55,14 +57,16 @@ abstract contract AuctionCoreUpgdaeable is
 
     function placeCardToAuction(
         uint256 cardId,
-        uint256 startingPrice
+        uint256 startingPrice,
+        string calldata currency
     ) external {
-        _placeCardToAuctionCore(cardId, startingPrice, msg.sender);
+        _placeCardToAuctionCore(cardId, startingPrice, currency, msg.sender);
     }
 
     function placeCardToAuctionGasFree(
         uint256 cardId,
         uint256 startingPrice,
+        string calldata currency,
         address caller,
         uint8 _v,
         bytes32 _r,
@@ -78,12 +82,13 @@ abstract contract AuctionCoreUpgdaeable is
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
         require(signer == caller, "snec");
         ++gasFreeOpCounter[caller];
-        _placeCardToAuctionCore(cardId, startingPrice, signer);
+        _placeCardToAuctionCore(cardId, startingPrice, currency, signer);
     }
 
     function _placeCardToAuctionCore(
         uint256 cardId,
         uint256 startingPrice,
+        string calldata currency,
         address sender
     ) internal {
         require(card.ownerOf(cardId) == sender, "NotOwner");
@@ -100,17 +105,17 @@ abstract contract AuctionCoreUpgdaeable is
         emit AuctionCreated(auctionId, cardId);
     }
 
-    function _takePayment(uint256 amount, address spender) internal virtual;
+    function _takePayment(uint256 amount, string memory currency, address spender) internal virtual;
 
-    function _sendPayment(uint256 amount, address receiver) internal virtual;
+    function _sendPayment(uint256 amount, string memory currency, address receiver) internal virtual;
 
     function _withdraw() internal virtual;
 
-    function placeBet(uint256 cardId, uint256 amount) public payable {
-        _placeBetCore(cardId, amount, msg.sender);
+    function placeBet(uint256 cardId, uint256 amount, string calldata currency) public payable {
+        _placeBetCore(cardId, amount, currency, msg.sender);
     }
 
-    function placeBetGasFree(uint256 cardId, uint256 amount, address sender,
+    function placeBetGasFree(uint256 cardId, uint256 amount, string calldata currency, address sender,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
@@ -125,10 +130,10 @@ abstract contract AuctionCoreUpgdaeable is
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
         require(signer == sender, "snec");
         ++gasFreeOpCounter[sender];
-        _placeBetCore(cardId, amount, signer);
+        _placeBetCore(cardId, amount, currency, signer);
     }
 
-    function _placeBetCore(uint256 cardId, uint256 amount, address sender) internal {
+    function _placeBetCore(uint256 cardId, uint256 amount, string calldata currency, address sender) internal {
         AuctionInfo storage thisAuction = bets[cardId];
         require(block.timestamp <= thisAuction.betsAcceptedUntilTs, "TooLate");
         require(
@@ -136,11 +141,12 @@ abstract contract AuctionCoreUpgdaeable is
             "TooFew"
         );
         if (thisAuction.bestBettor != address(0x0)) {
-            _sendPayment(thisAuction.bestBet, thisAuction.bestBettor);
+            _sendPayment(thisAuction.bestBet, thisAuction.currency, thisAuction.bestBettor);
         }
-        _takePayment(amount, sender);
+        _takePayment(amount, currency, sender);
         thisAuction.bestBet = amount;
         thisAuction.bestBettor = sender;
+        thisAuction.currency = currency;
 
         emit NewBet(sender, cardId, amount);
 
@@ -150,7 +156,8 @@ abstract contract AuctionCoreUpgdaeable is
                 cardId,
                 thisAuction.betsAcceptedUntilTs,
                 amount,
-                thisAuction.startingPrice
+                thisAuction.startingPrice,
+                currency
             )
         );
     }
@@ -188,7 +195,7 @@ abstract contract AuctionCoreUpgdaeable is
         card.safeTransferFrom(address(this), receiver, cardId);
         _sendPayment(
             (thisAuction.bestBet * (100 - _commission)) / 100,
-            thisAuction.creator
+            thisAuction.currency, thisAuction.creator
         );
         thisAuction
             .bestBet = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
@@ -287,7 +294,7 @@ abstract contract AuctionCoreUpgdaeable is
     uint256[47] private __gap;
 }
 
-contract MaintokenAuction is AuctionCoreUpgdaeable {
+abstract contract MaintokenAuction is AuctionCoreUpgdaeable {
     MainToken maintoken;
 
     function initialize() external initializer {
@@ -298,21 +305,21 @@ contract MaintokenAuction is AuctionCoreUpgdaeable {
         maintoken = _maintoken;
     }
 
-    function _takePayment(uint256 amount, address spender) internal override {
+    function _takePayment(uint256 amount, address spender) internal {
         require(msg.value == 0, "Maincard auction does not need MATIC");
         require(maintoken.transferFrom(spender, address(this), amount));
     }
 
-    function _sendPayment(uint256 amount, address receiver) internal override {
+    function _sendPayment(uint256 amount, string memory currency, address receiver) internal override {
         require(maintoken.transfer(receiver, amount));
     }
 
     function _withdraw() internal override {
-        _sendPayment(maintoken.balanceOf(address(this)), owner());
+        _sendPayment(maintoken.balanceOf(address(this)), "MCN", owner());
     }
 }
 
-contract MaticAuction is AuctionCoreUpgdaeable {
+abstract contract MaticAuction is AuctionCoreUpgdaeable {
     function initialize() external initializer {
         __AuctionCore_init();
     }
@@ -320,11 +327,12 @@ contract MaticAuction is AuctionCoreUpgdaeable {
     function _takePayment(
         uint256 amount,
         address /* spender */
-    ) internal override {
+    ) internal {
         require(msg.value == amount, "Not enough MATIC");
     }
 
-    function _sendPayment(uint256 amount, address receiver) internal override {
+    function _sendPayment(uint256 amount, string memory currency, address receiver) internal override
+ {
         (bool sent /* memory data */, ) = payable(receiver).call{value: amount}(
             ""
         );
@@ -332,6 +340,6 @@ contract MaticAuction is AuctionCoreUpgdaeable {
     }
 
     function _withdraw() internal override {
-        _sendPayment(address(this).balance, owner());
+        _sendPayment(address(this).balance, "MATIC", owner());
     }
 }

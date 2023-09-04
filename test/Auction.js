@@ -124,10 +124,10 @@ describe("Auction tests", () => {
         await maintoken.connect(alice).approve(auction.address, 120)
         await maintoken.connect(carl).approve(auction.address, 125)
 
-        await expect(placeBet(cardId, alice, "50")).to.be.revertedWith("TooFew");
-        await placeBet(cardId, alice, "120");
-        await expect(placeBet(cardId, carl, "115")).to.be.revertedWith("TooFew");
-        await placeBet(cardId, carl, "125");
+        await expect(placeBet(cardId, alice, "50", "MCN")).to.be.revertedWith("TooFew");
+        await placeBet(cardId, alice, "120", "MCN");
+        await expect(placeBet(cardId, carl, "115", "MCN")).to.be.revertedWith("TooFew");
+        await placeBet(cardId, carl, "125",  "MCN");
 
         // she cant take it immediately.
         await expect(takeCard(cardId, alice)).to.be.revertedWith("TooEarly");
@@ -144,6 +144,21 @@ describe("Auction tests", () => {
         expect(bobsBalanceAfterTakingCard.sub(bobsBalanceBeforeTakingCard).toString()).to.be.equal("118")
         const cardOwnerAfterTakingFromAuc = await card.ownerOf(cardId);
         expect(cardOwnerAfterTakingFromAuc).to.be.equal(carl.address);
+    });
+
+    it("Alice cannot bid using MATIC after a bid was placed using MCN", async () => {
+        const cardId = await mintNewCard(bob);
+        await placeCard(cardId, bob, "100");
+
+        // Ensure Alice has enough MCN for the bet
+        await maintoken.connect(admin).transfer(alice.address, ethers.utils.parseEther("200"));
+        await maintoken.connect(alice).approve(auction.address, ethers.utils.parseEther("120"));
+
+        // Alice places a bid using MCN
+        await placeBet(cardId, alice, ethers.utils.parseEther("120"), "MCN");
+
+        // Bob tries to place a bid using MATIC after Alice's MCN bid
+        await expect(placeBet(cardId, carol, ethers.utils.parseEther("0.2"), "MATIC")).to.be.revertedWith("Different Currency");
     });
 
     it("Testing Auction with Matic", async () => {
