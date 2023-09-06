@@ -60,6 +60,9 @@ contract Arena is IArena, OwnableUpgradeable {
         bool takenAfterMatch
     );
     event CardTakenFromCall(uint256 cardId, address taker, uint256 callId);
+
+    event EventCreated(uint256 eventId);
+    event EventResultChanged(uint256 eventId, MatchResult result);
     // Events CallExpired/CallCompleted not needed at the moment.
 
     ICard card;
@@ -73,6 +76,7 @@ contract Arena is IArena, OwnableUpgradeable {
     uint256 _betId;
     mapping(address => uint256[]) public callsByUser; // user->index->callId
     mapping(address => uint256) public gasFreeOpCounter;
+    mapping(address => mapping(uint256 => uint256)) cardsOnABet;  // user->eventId->counter
 
     function initialize() public initializer {
         __Ownable_init();
@@ -99,6 +103,7 @@ contract Arena is IArena, OwnableUpgradeable {
             MatchResult.MatchIsInProgress
         );
         require(_eventExists(eventId), "E0");
+        emit EventCreated(eventId);
     }
 
     function updateEvent(
@@ -147,6 +152,10 @@ contract Arena is IArena, OwnableUpgradeable {
                 choiceId == MatchResult.Draw ||
                 choiceId == MatchResult.SecondWon,
             "Wrong choice"
+        );
+        require(
+            cardsOnABet[txSigner][eventId] < 10,
+            "Too much cards"
         );
     }
 
@@ -202,6 +211,7 @@ contract Arena is IArena, OwnableUpgradeable {
         bets[cardId] = BetInfo(eventId, choiceId, cardOwner, _betId);
         betsByUser[cardOwner].push(cardId);
         card.safeTransferFrom(cardOwner, address(this), cardId);
+        ++cardsOnABet[cardOwner][eventId];
 
         emit NewBet(
             cardOwner,
@@ -234,7 +244,12 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 eventId,
         MatchResult resultChoiceId
     ) public override onlyOwner {
+        // we used to have require(eventInfos[eventId].result == InProgress) here,
+        // but faced a number of situations where results were updated.
+        // Looks like it is what is it is. We have to accept that the world around
+        // is not a pure functional programming.
         eventInfos[eventId].result = resultChoiceId;
+        emit EventResultChanged(eventId, resultChoiceId);
     }
 
     function takeCard(uint256 cardId) public override {
@@ -300,6 +315,7 @@ contract Arena is IArena, OwnableUpgradeable {
         uint64 eventDate = uint64(
             eventInfos[bets[cardId].eventId].betsAcceptedUntilTs
         );
+        --cardsOnABet[originalOwner][bets[cardId].eventId];
         delete bets[cardId];
 
         uint256 myBetCount = betsByUser[originalOwner].length;
