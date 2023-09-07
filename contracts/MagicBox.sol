@@ -94,6 +94,7 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
 
     function openBoxFree(ICard.CardRarity rarity)
         external
+        onlyOwner
         whenNotPaused
     {
         require(
@@ -112,7 +113,7 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
         );
 
         _requests[requestId] = Request(msg.sender, rarity);
-}
+    }
 
 
     function getBoxPrice(ICard.CardRarity rarity) public view returns (uint256) {

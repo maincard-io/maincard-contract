@@ -85,4 +85,16 @@ describe("MagicBox tests", function () {
     it("Test not enough funds", async () => {
         await expect(this.sendRequestToBuyCard(0, "10100000000000000000")).to.be.reverted;
     });
+
+    it("Test unlucky with openBoxFree", async () => {
+        const requestId = await this.magicBox.openBoxFree(0);
+        const receivedCardId = await this.fulfillRequest(requestId, 99);
+        expect(await this.card.getRarity(receivedCardId)).to.be.equal(0);
+    });
+
+    it("Test lucky with openBoxFree", async () => {
+        const requestId = await this.magicBox.openBoxFree(0);
+        const receivedCardId = await this.fulfillRequest(requestId, 1);
+        expect(await this.card.getRarity(receivedCardId)).to.be.equal(1);
+    });
 });
