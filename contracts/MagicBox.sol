@@ -92,6 +92,29 @@ contract MagicBox is VRFConsumerBaseV2, Ownable, Pausable {
         _requests[requestId] = Request(msg.sender, rarity);
     }
 
+    function openBoxFree(ICard.CardRarity rarity)
+        external
+        whenNotPaused
+    {
+        require(
+            rarity == ICard.CardRarity.Common ||
+            rarity == ICard.CardRarity.Rare ||
+            rarity == ICard.CardRarity.Epic ||
+            rarity == ICard.CardRarity.Legendary
+        );
+
+        uint256 requestId = COORDINATOR.requestRandomWords(
+            s_keyHash,
+            s_subscriptionId,
+            _requestConfirmations,
+            _callbackGasLimit,
+            1
+        );
+
+        _requests[requestId] = Request(msg.sender, rarity);
+}
+
+
     function getBoxPrice(ICard.CardRarity rarity) public view returns (uint256) {
         return (100 + getProbability(rarity)) * _card.cardPrice(rarity) / 100;
     }
