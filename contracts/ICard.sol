@@ -10,7 +10,8 @@ interface ICard is IERC721Upgradeable {
         Rare,
         Epic,
         Legendary,
-        Mythic
+        Mythic,
+        Demo
     }
 
     function livesRemaining(uint256 cardId) external view returns(uint256);

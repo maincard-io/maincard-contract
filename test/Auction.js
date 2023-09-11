@@ -40,7 +40,7 @@ describe("Auction tests", () => {
         const ARENA_CHANGER_ROLE = await card.ARENA_CHANGER_ROLE();
         await card.grantRole(ARENA_CHANGER_ROLE, admin.address);
 
-        await card.setAuctionAddress(auction.address);
+        await card.setControlAddresses(ethers.constants.AddressZero, maintoken.address, auction.address);
 
         await auction.setCardAddress(card.address);
         await maticAuction.setCardAddress(card.address);
@@ -223,7 +223,8 @@ describe("Auction tests", () => {
         )
         const signatureInfo = ethers.utils.splitSignature(await gaslessMan.signMessage(sendToAuctionMessage))
 
-        await card.setAuctionAddress(oldAuction.address);
+        await card.setControlAddresses(ethers.constants.AddressZero, maintoken.address, oldAuction.address);
+        
 
         // then eventId, tokenId, choice, and signatureInfo is sent to backend
         // and placed by someone

@@ -315,7 +315,9 @@ contract Arena is IArena, OwnableUpgradeable {
         uint64 eventDate = uint64(
             eventInfos[bets[cardId].eventId].betsAcceptedUntilTs
         );
-        --cardsOnABet[originalOwner][bets[cardId].eventId];
+        if (cardsOnABet[originalOwner][bets[cardId].eventId] > 0) {
+            --cardsOnABet[originalOwner][bets[cardId].eventId];
+        }
         delete bets[cardId];
 
         uint256 myBetCount = betsByUser[originalOwner].length;

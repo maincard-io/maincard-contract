@@ -7,15 +7,17 @@ const Rare = 1;
 const Epic = 2;
 const Legendary = 3;
 const Mythic = 4;
+const Demo = 5;
 
 describe("Basic tests", function () {
     let instance, maintoken;
-    let admin, alice, bob
+    let admin, alice, bob;
+    let Card
 
     before(async () => {
         [admin, alice, bob] = await ethers.getSigners();
 
-        const Card = await ethers.getContractFactory("Card");
+        Card = await ethers.getContractFactory("Card");
         instance = await upgrades.deployProxy(Card);
         const MainToken = await ethers.getContractFactory("MainToken");
         maintoken = await upgrades.deployProxy(MainToken);
@@ -34,7 +36,7 @@ describe("Basic tests", function () {
         await setPriceTx.wait();
     });
     it("Admin Can not set price", async () => {
-        await expect(instance.setTokenPrice(20, 0)).to.be.revertedWith("msg.sender should have granted PRICE_MANAGER_ROLE");
+        await expect(instance.setTokenPrice(20, 0)).to.be.revertedWithCustomError(Card, "MissingRequiredRole")
     });
 
     it("Alice can mint free tokens", async () => {
@@ -61,7 +63,7 @@ describe("Basic tests", function () {
     it("Allows everyone to buy tokens if they provide money", async () => {
         const contractAsBob = await instance.connect(bob);
         const setPriceTx = await contractAsBob.setTokenPrice(BigNumber.from("20000000000000000000"), Regular);
-        const buyTx = await contractAsBob.mint(Regular, {value: "20000000000000000000"});
+        const buyTx = await contractAsBob.mint(Regular, { value: "20000000000000000000" });
         const effects = await buyTx.wait();
         expect(effects.events.filter(e => e.event === "Transfer")).length.above(0);
     });
@@ -117,14 +119,14 @@ describe("Basic tests", function () {
         await setPriceEpicTx.wait();
 
         const newUser = ethers.Wallet.createRandom().connect(alice.provider);
-        const fundUser = await alice.sendTransaction({to: newUser.address, value: "700000000000000000000"});
+        const fundUser = await alice.sendTransaction({ to: newUser.address, value: "700000000000000000000" });
 
         for (let [rarity, px] of [[Regular, "20000000000000000000"], [Rare, "70000000000000000000"]]) {
-            const mintTx = await instance.connect(newUser).mint(rarity, {value: px});
+            const mintTx = await instance.connect(newUser).mint(rarity, { value: px });
             await mintTx.wait();
         }
     });
-    
+
     it("Does not allow to new user to mint Epic, Legendary, Mythic", async () => {
         const contractAsBob = await instance.connect(bob);
         const setPriceRegularTx = await contractAsBob.setTokenPrice(BigNumber.from("20000000000000000000"), Regular);
@@ -135,13 +137,46 @@ describe("Basic tests", function () {
         await setPriceEpicTx.wait();
 
         const newUser = ethers.Wallet.createRandom().connect(alice.provider);
-        const fundUser = await alice.sendTransaction({to: newUser.address, value: "1000000000000000000"});
+        const fundUser = await alice.sendTransaction({ to: newUser.address, value: "1000000000000000000" });
         await fundUser.wait();
 
         for (let rarity of [Epic, Legendary, Mythic]) {
             await expect(instance.connect(newUser).mint(rarity)).to.be.reverted;
         }
     });
+
+    it("Allows to mint DEMO", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        await contractAsAlice.freeMint(alice.address, Demo);
+    })
+
+    it("You can not send DEMO anywhere", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        const mintTx = await contractAsAlice.freeMint(alice.address, Demo);
+        const mintEffects = await mintTx.wait();
+        const mintedTokenId1 = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
+        await expect(contractAsAlice.transferFrom(alice.address, bob.address, mintedTokenId1)).to.be.revertedWithCustomError(Card, "OperationNotPermittedForDemoCard")
+    })
+
+    it("You can not burn DEMO in 5 days", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        const mintTx = await contractAsAlice.freeMint(alice.address, Demo);
+        const mintEffects = await mintTx.wait();
+        const mintedTokenId1 = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
+        await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+        await ethers.provider.send('evm_mine');
+        await expect (contractAsAlice.burnCard(mintedTokenId1)).to.be.revertedWithCustomError(Card, "CanNotBurnDemoYet")
+    })
+
+    it("You can burn DEMO in 15 days", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        const mintTx = await contractAsAlice.freeMint(alice.address, Demo);
+        const mintEffects = await mintTx.wait();
+        const mintedTokenId1 = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
+        await ethers.provider.send('evm_increaseTime', [15 * 24 * 3600]);
+        await ethers.provider.send('evm_mine');
+        await contractAsAlice.burnCard(mintedTokenId1)
+    })
 });
 
 describe("Arena tests", () => {
@@ -173,21 +208,15 @@ describe("Arena tests", () => {
         maintoken = await upgrades.deployProxy(MainToken);
 
         const ARENA_CHANGER_ROLE = await card.ARENA_CHANGER_ROLE();
-        const grantArenaChangerRoleTx = await card.grantRole(ARENA_CHANGER_ROLE, admin.address);
-        await grantArenaChangerRoleTx.wait();
-
-        const setArenaTx = await card.setArenaAddress(arena.address);
-        await setArenaTx.wait();
-        const setCardTx = await arena.setCardAddress(card.address);
-        await setCardTx.wait();
+        await card.grantRole(ARENA_CHANGER_ROLE, admin.address);
+        await card.setControlAddresses(arena.address, card.address, ethers.constants.AddressZero);
+        await arena.setCardAddress(card.address);
 
         const MINTER_ROLE = await card.MINTER_ROLE();
-        const grantMinterRoleTx = await card.grantRole(MINTER_ROLE, admin.address);
-        await grantMinterRoleTx.wait();
+        await card.grantRole(MINTER_ROLE, admin.address);
 
         const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
-        const grantPriceManagerRoleTx = await card.grantRole(PRICE_MANAGER_ROLE, admin.address);
-        await grantPriceManagerRoleTx.wait();
+        await card.grantRole(PRICE_MANAGER_ROLE, admin.address);
 
         createEvent = async (betsUntil) => {
             lastEvent = lastEvent + 1;
@@ -209,11 +238,8 @@ describe("Arena tests", () => {
         const MT_MINTER_ROLE = await maintoken.MINTER_ROLE();
         const grantMinterRoleOfMainTokenToArena = await maintoken.grantRole(MT_MINTER_ROLE, arena.address);
         await grantMinterRoleOfMainTokenToArena.wait();
-
-        const setMainTokenTx = await arena.setMainToken(maintoken.address);
-        await setMainTokenTx.wait();
-        const setMainTokenCardTx = await card.setMainTokenAddress(maintoken.address);
-        await setMainTokenCardTx.wait();
+        await arena.setMainToken(maintoken.address);
+        await card.setControlAddresses(arena.address, maintoken.address, ethers.constants.AddressZero)
 
         legendaryCardIdBelongingToAlice = await getLegendaryCardForAlice();
     });
@@ -222,10 +248,10 @@ describe("Arena tests", () => {
         const cardAsAlice = card.connect(alice);
         const setPriceTx = await card.setTokenPrice(BigNumber.from("20000000000000000000"), Regular);
         await setPriceTx.wait();
-        
+
         const regularCards = [];
         for (let i = 0; i < 2; ++i) {
-            const mintTx = await cardAsAlice.mint(Regular, {value: "20000000000000000000"});
+            const mintTx = await cardAsAlice.mint(Regular, { value: "20000000000000000000" });
             const mintEffects = await mintTx.wait();
             regularCards.push(mintEffects.events.filter(e => e.event === "Transfer")[0].args[2]);
         }
@@ -252,14 +278,14 @@ describe("Arena tests", () => {
         await setUpdatePriceTx.wait();
 
         const rareCards = [];
-        const upgradeToRareTx = await cardAsAlice.upgrade(...regularCards, {value: "200000000000000000000"});
+        const upgradeToRareTx = await cardAsAlice.upgrade(...regularCards, { value: "200000000000000000000" });
         const upgrade1Effects = await upgradeToRareTx.wait();
         rareCards.push(upgrade1Effects.events.filter(e => e.event === "Transfer" && e.args[1] == alice.address)[0].args[2]);
 
         const setRarePriceTx = await card.setTokenPrice(BigNumber.from("2000000000000000000000"), Rare);
         await setRarePriceTx.wait();
 
-        const mintRareTx = await cardAsAlice.mint(Rare, {value: "2000000000000000000000"});
+        const mintRareTx = await cardAsAlice.mint(Rare, { value: "2000000000000000000000" });
         const mintRareEffects = await mintRareTx.wait();
         rareCards.push(mintRareEffects.events.filter(e => e.event === "Transfer" && e.args[1] == alice.address)[0].args[2]);
 
@@ -285,7 +311,7 @@ describe("Arena tests", () => {
         const setUpdateToLegendaryPriceTx = await card.setTokenUpgradePrice(BigNumber.from("2000000000000000000000"), Rare);
         await setUpdateToLegendaryPriceTx.wait();
 
-        const upgradeToLegendaryTx = await cardAsAlice.upgrade(...rareCards, {value: "2000000000000000000000"});
+        const upgradeToLegendaryTx = await cardAsAlice.upgrade(...rareCards, { value: "2000000000000000000000" });
         const upgrade2Effects = await upgradeToLegendaryTx.wait();
         return upgrade2Effects.events.filter(e => e.event === "Transfer" && e.args[1] == alice.address)[0].args[2];
     };
@@ -324,7 +350,7 @@ describe("Arena tests", () => {
         expect(alicesMaintokenBalanceAfter.sub(alicesMaintokenBalanceBefore).toString()).to.be.equal("3000000000000000000");
         const livesRemaining = await card.livesRemaining(cardId);
         expect(livesRemaining).to.be.equal(2);
-        
+
         // Sending
         eventId = await createEvent(currentBlockTime + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
@@ -438,10 +464,10 @@ describe("Arena tests", () => {
         await cardAsAlice.approve(arenaAsAlice.address, legendaryCardIdBelongingToAlice);
         let makeLegendaryBetTx = await arenaAsAlice.makeBet(eventId, legendaryCardIdBelongingToAlice, SecondWon);
         await makeLegendaryBetTx.wait();
-        
+
         await takeCards();
-        
-        
+
+
         await cardAsAlice.approve(arenaAsAlice.address, legendaryCardIdBelongingToAlice);
         makeLegendaryBetTx = await arenaAsAlice.makeBet(eventId, legendaryCardIdBelongingToAlice, SecondWon);
         await makeLegendaryBetTx.wait();
@@ -483,21 +509,21 @@ describe("Arena tests", () => {
 
     it("When you buy an epic card, you can mint it then", async () => {
         const newUser = ethers.Wallet.createRandom().connect(alice.provider);
-        await alice.sendTransaction({to: newUser.address, value: "700000000000000000000"});
+        await alice.sendTransaction({ to: newUser.address, value: "700000000000000000000" });
         const cardAsAlice = card.connect(alice)
 
         await card.setTokenPrice(BigNumber.from("2000000000"), Regular);
         await card.setTokenPrice(BigNumber.from("2000000000"), Rare);
         await card.setTokenPrice(BigNumber.from("2000000000"), Epic);
-        
-        const aliceMintedNewEpic = await cardAsAlice.mint(Epic, {value: "2000000000"});
+
+        const aliceMintedNewEpic = await cardAsAlice.mint(Epic, { value: "2000000000" });
         const effects = await aliceMintedNewEpic.wait();
         const mintedEpicTokenId = effects.events.filter(e => e.event === "Transfer")[0].args[2];
         expect(await card.getRarity(mintedEpicTokenId)).to.be.equal(2);
         await cardAsAlice.functions['safeTransferFrom(address,address,uint256)'](alice.address, newUser.address, mintedEpicTokenId);
 
         for (let rarity of [Regular, Rare, Epic]) {
-            const mintTx = await card.connect(newUser).mint(rarity, {value: "2000000000"});
+            const mintTx = await card.connect(newUser).mint(rarity, { value: "2000000000" });
             await mintTx.wait();
         }
     });
@@ -556,11 +582,11 @@ describe("Arena tests", () => {
         const gaslessMan1 = ethers.Wallet.createRandom();
         const gaslessMan2 = ethers.Wallet.createRandom();
 
-        const callIds = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
-        const eventIds = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
-        const cardIds1 = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
-        const cardIds2 = (new Array(10)).fill(0n).map(_ =>  BigNumber.from("0"));
-        
+        const callIds = (new Array(10)).fill(0n).map(_ => BigNumber.from("0"));
+        const eventIds = (new Array(10)).fill(0n).map(_ => BigNumber.from("0"));
+        const cardIds1 = (new Array(10)).fill(0n).map(_ => BigNumber.from("0"));
+        const cardIds2 = (new Array(10)).fill(0n).map(_ => BigNumber.from("0"));
+
         for (let i = 0; i < 10; ++i) {
             const eventId = await createEvent(currentBlockTime + halfHour);
             eventIds[i] = eventId;
@@ -589,7 +615,7 @@ describe("Arena tests", () => {
             )
 
             const signature1Info = ethers.utils.splitSignature(await gaslessMan1.signMessage(sendCard1))
-            
+
             const tx = await arenaAsAlice.createCallGasFree(
                 eventId,
                 mintedTokenId1,
@@ -647,8 +673,35 @@ describe("Arena tests", () => {
             expect(u1_cardIds).to.be.deep.eq(cardIds1);
             expect(u2_cardIds).to.be.deep.eq(cardIds2);
         }
+    })
 
+    it("Works as expected for Demo cards", async () => {
+        const cardAsAlice = card.connect(alice)
+        const mintTx = await card.freeMint(alice.address, Demo);
+        const mintEffects = await mintTx.wait();
+        const demoCardId = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
 
+        // Sending
+        let eventId = await createEvent(currentBlockTime + halfHour);
+        await arenaAsAlice.makeBet(eventId, demoCardId, FirstWon);
 
+        // Losing
+        await ethers.provider.send('evm_increaseTime', [oneHour]);
+        currentBlockTime = currentBlockTime + oneHour;
+        await ethers.provider.send('evm_mine');
+        await arena.setEventResult(eventId, SecondWon);
+
+        // Receiving
+        await arenaAsAlice.takeCard(demoCardId);
+        const cardOwner = await card.ownerOf(demoCardId);
+        expect(cardOwner).to.be.equal(alice.address);
+        
+        const livesRemaining = await card.livesRemaining(demoCardId);
+        expect(livesRemaining).to.be.equal(1);
+
+        // Restoring lives
+        await cardAsAlice.restoreLiveMatic(demoCardId, {value: ethers.utils.parseEther("1.0")})
+        const livesRemainingAfterRestore = await card.livesRemaining(demoCardId);
+        expect(livesRemainingAfterRestore).to.be.equal(2);
     })
 })
