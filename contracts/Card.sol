@@ -481,21 +481,18 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Epic) {
-            uint8[5] memory t = [0, 10, 25, 50, 75];
+            uint8[5] memory t = [0, 20, 40, 60, 80];
+            return t[curLivesRemaining] * multiplier;
+        }
+        if (rarity == CardRarity.Legendary) {
+            uint16[6] memory t = [0, 60, 120, 180, 240, 300];
+            return t[curLivesRemaining] * multiplier;
+        }
+        if (rarity == CardRarity.Mythic) {
+            uint16[11] memory t = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
             return t[curLivesRemaining] * multiplier;
         }
         return curLivesRemaining * 100 * multiplier;
-        /*
-        if (rarity == CardRarity.Legendary) {
-            uint256[6] memory t = [0, 50, 100, 150, 225, 300];
-            return t[livesRemaining];
-        }
-        if (rarity == CardRarity.Mythic) {
-            uint256[11] memory t = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
-            return t[livesRemaining];
-        }
-        revert("Unknown rarity");
-        */
     }
 
     function cardPrice(CardRarity rarity) external view returns (uint256) {
