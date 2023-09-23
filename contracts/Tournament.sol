@@ -8,7 +8,8 @@ import "@openzeppelin/contracts-upgradeable/interfaces/IERC721Upgradeable.sol";
 import "./ICard.sol";
 
 contract Tournament is AccessControlUpgradeable {
-    bytes32 public constant TOURNAMENT_MANAGER_ROLE = keccak256("TOURNAMENT_MANAGER_ROLE");
+    bytes32 public constant TOURNAMENT_MANAGER_ROLE =
+        keccak256("TOURNAMENT_MANAGER_ROLE");
 
     IERC20Upgradeable public _token;
     ICard public _card;
@@ -107,6 +108,63 @@ contract Tournament is AccessControlUpgradeable {
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
         require(signer == caller, "snec");
         ++_gasFreeOpCounter[caller];
+        _registerForTournamentCoreNoFees(cardId, tournamentId, caller);
+        require(
+            _token.transferFrom(
+                caller,
+                address(this),
+                _torunamentInfos[tournamentId].participationFee
+            )
+        );
+        _torunamentInfos[tournamentId].rewardsCollected += _torunamentInfos[
+            tournamentId
+        ].participationFee;
+    }
+
+    function massRegisterForTournamentGasFree(
+        uint256[] calldata cardId,
+        uint256 tournamentId,
+        address caller,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory originalMessage = abi.encodePacked(
+            _gasFreeOpCounter[caller]
+        );
+        for (uint256 i = 0; i < cardId.length; ++i) {
+            originalMessage = abi.encodePacked(originalMessage, cardId[i]);
+        }
+        originalMessage = abi.encodePacked(originalMessage, tournamentId);
+        bytes32 prefixedHashMessage = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(originalMessage)
+            )
+        );
+        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
+        require(signer == caller, "snec");
+        ++_gasFreeOpCounter[caller];
+        for (uint256 i = 0; i < cardId.length; ++i) {
+            _registerForTournamentCoreNoFees(cardId[i], tournamentId, caller);
+        }
+        require(
+            _token.transferFrom(
+                caller,
+                address(this),
+                _torunamentInfos[tournamentId].participationFee * cardId.length
+            )
+        );
+        _torunamentInfos[tournamentId].rewardsCollected += _torunamentInfos[
+            tournamentId
+        ].participationFee * cardId.length;
+    }
+
+    function _registerForTournamentCoreNoFees(
+        uint256 cardId,
+        uint256 tournamentId,
+        address caller
+    ) internal {
         require(_card.ownerOf(cardId) == caller, "Tournament: not owner");
         require(
             _torunamentInfos[tournamentId].isInitialized,
@@ -125,16 +183,6 @@ contract Tournament is AccessControlUpgradeable {
             "Tournament: already registered"
         );
         _registeredPlayers[tournamentId][caller] == true;
-        require(
-            _token.transferFrom(
-                caller,
-                address(this),
-                _torunamentInfos[tournamentId].participationFee
-            )
-        );
-        _torunamentInfos[tournamentId].rewardsCollected += _torunamentInfos[
-            tournamentId
-        ].participationFee;
         emit RegisteredForTournament(caller, cardId);
     }
 }

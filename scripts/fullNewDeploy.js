@@ -129,7 +129,7 @@ async function main() {
   */
 
   const TOURNAMENT_MANAGER_ROLE = await tournament.TOURNAMENT_MANAGER_ROLE();
-  const grantTournamentManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, admin.address);
+  const grantTournamentManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, backend);
   await grantTournamentManagerRoleTx.wait();
 }
 

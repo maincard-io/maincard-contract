@@ -25,7 +25,7 @@ const DATA = {
       "polygon": "0x094A3B77fE25bc8De4F6e679e61A00c1e1529e25",
     },
     tournament: {
-      "polygon": "0x3f4A8705C965Ef1BE0B4C1d2731Cd8782AAAc1b8",
+      "polygon": "0x68654993d9aA8FeC79915dc3Cc8e840e4267F345",
     },
     arenaProxy: {
       "mumbai": "0x69E91f33424a211A0B70e879169A0b2684ce2829",
