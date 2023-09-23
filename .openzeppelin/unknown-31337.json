@@ -2,7 +2,7 @@
   "manifestVersion": "3.2",
   "admin": {
     "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    "txHash": "0xbe3d147edd8a9dcd58afca316d8f160102604fd3d32ad78bc2b451fa6ccbf99a"
+    "txHash": "0x9b715dbc0ea4d77a73693a9c3ebae3724d1d235ed10203f052743d272f29d472"
   },
   "proxies": [
     {
@@ -141,11 +141,6 @@
       "kind": "transparent"
     },
     {
-      "address": "0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3",
-      "txHash": "0xc16f2895cb886004b8f81925d86e9249457d7fdfcf74ec9d20ed67612db1ecb2",
-      "kind": "transparent"
-    },
-    {
       "address": "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
       "txHash": "0x146e769c00ee19f440e27a857edfd6c87b1b50c663c74abe762db5ab735e505a",
       "kind": "transparent"
@@ -153,11 +148,6 @@
     {
       "address": "0x9d4454B023096f34B160D6B654540c56A1F81688",
       "txHash": "0x8b1bd9684c6685c783c54ff470d008f6964b608264cf35bf9d0f08237659bc0c",
-      "kind": "transparent"
-    },
-    {
-      "address": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
-      "txHash": "0xe8a796112034d794be9b578f4e46cb1f31bbe6d54de1bc5427ae6868192e1334",
       "kind": "transparent"
     },
     {
@@ -231,53 +221,73 @@
       "kind": "transparent"
     },
     {
+      "address": "0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3",
+      "txHash": "0xba2251465b042acd8528247c05e2354c5f1cd56806f6f1000013e5701621ae95",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
+      "txHash": "0x377bbea8d7f0597947342b2ee8a78714284e7b4d93c5177212edba38221fe9a3",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xB0D4afd8879eD9F52b28595d31B441D079B2Ca07",
+      "txHash": "0x4d1852f7bc5cb5ac4221d86df5f494519d5c568fdf6733a68984092a563b1931",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x162A433068F51e18b7d13932F27e66a3f99E6890",
+      "txHash": "0x6bed3d2eb6853b7fb05c203dbea6bcfac726516b58471c42fe02bd0d8e2e93fb",
+      "kind": "transparent"
+    },
+    {
       "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-      "txHash": "0x230c9aaf025e4fa65cfd97600fbd06ba59f35d4cd3abe78210c4b8a606f02e00",
+      "txHash": "0xc6cc8d98c581dfb6b613876920348d127598772d8af22a6edf0bc5397ae8f276",
       "kind": "transparent"
     },
     {
       "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-      "txHash": "0xff1dc930529c90b7852c8b49e0ce9211325a5a50920d4de916a049ffef235051",
+      "txHash": "0xede74e43ac8348dc63d5069612f7fcd809e99478664f1a2dec2e2649c578edc9",
       "kind": "transparent"
     },
     {
       "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
-      "txHash": "0x4f3a7a920b5ac7d4afa1c0ce0c62675cd57359625e6445b73b67cec37bf8ebb5",
+      "txHash": "0xa32626cb5723c30ba838d82a1ede1bfe97a0478afa917413f1fbf58827b7e72a",
       "kind": "transparent"
     },
     {
       "address": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-      "txHash": "0x3747cbb592941ad1e9a4d2cf82120cf6bcd51a8ef833db89685750683eb7dafd",
+      "txHash": "0x5c8b23a840c4ae81e05d0042d56436dace1964195c5ba09c96d03daaeaaace23",
       "kind": "transparent"
     },
     {
       "address": "0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9",
-      "txHash": "0xcc27234d442a4ac0284ecf8d66f963f5e3f38bc2a619da0a90f2b904aeb3d126",
+      "txHash": "0x1f2dc8aa461fb33cda901f008ec6dcb6f9fcab23a78a7e0deaaf1c0c8623d606",
       "kind": "transparent"
     },
     {
       "address": "0x36C02dA8a0983159322a80FFE9F24b1acfF8B570",
-      "txHash": "0xa0eaa07b81d9160d3291a015cd67805fd4d394d5856ba0ed04ad656dfd2dea04",
+      "txHash": "0xec09dd45b6e16d5f50ea99453021098a843466f71749c4ab128383c0bd3f4915",
       "kind": "transparent"
     },
     {
       "address": "0x4c5859f0F772848b2D91F1D83E2Fe57935348029",
-      "txHash": "0x00b69148ea42a5b8497876bb51e3a379c87dd5466c57b19b94e1f1e0904a2301",
+      "txHash": "0xc1a70b3861f384d8c5fbb7b2bb52c58a205c69f04e08749c53e65a9347355064",
       "kind": "transparent"
     },
     {
       "address": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
-      "txHash": "0xde7ad448343b5936bcee3a87fbc01201fa1161fde44c06b942ec6e6b0081ec8c",
+      "txHash": "0x59a5c813da718e24688d2c1a295f8c3baaf0ecdc28a84d500307c3795c648155",
       "kind": "transparent"
     },
     {
       "address": "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
-      "txHash": "0x302a8a25d1ee27b52157f638beef7d575054bb59c4635e5efc426470ca394ad7",
+      "txHash": "0x5243b7f9b5ccead55b4ddcdcf6e847cb66ae208d7499b4517b14ae86efb5d85b",
       "kind": "transparent"
     },
     {
       "address": "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1",
-      "txHash": "0x76055278e490bb2d53d9c9619e6a0ed6ddeee873381dc2cba78597e05dc18657",
+      "txHash": "0x1da51658fec24c457ffd92fb2543bb5092697dbb7faa89b4d893ea37a5630c5c",
       "kind": "transparent"
     },
     {
@@ -609,7 +619,7 @@
     },
     "7ecd07adb6edef9d2081814ace05f90e2bdaba4af1f5c3a47f583192da8f911d": {
       "address": "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
-      "txHash": "0xf21ff90d407ff903a7f1594def41c61a32ffd1d6d58a6eda3efbcf2eac9a8590",
+      "txHash": "0xa6623b1e2a2b34f57e5fb8fd6f038758415bba97980feeef6ee305405d0f327a",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -795,7 +805,7 @@
     },
     "31f28d645aaef1678f8eee3aa0f9392aa8b65e18b803a411893d92620d25b58c": {
       "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-      "txHash": "0xf79037950972a3b373eeda065e6e7f4acf11ee99119b58b9791cd2693cc5b58a",
+      "txHash": "0x3ed59cb0bc4f3359e427bab50f2d99cc595914ee423b6f7eff85641ed23f07ef",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -860,7 +870,7 @@
             "label": "card",
             "offset": 0,
             "slot": "103",
-            "type": "t_contract(Card)9239",
+            "type": "t_contract(Card)9296",
             "contract": "AuctionCoreUpgdaeable",
             "src": "contracts/Auction.sol:30"
           },
@@ -916,7 +926,7 @@
             "label": "maintoken",
             "offset": 0,
             "slot": "156",
-            "type": "t_contract(MainToken)9860",
+            "type": "t_contract(MainToken)9975",
             "contract": "MaintokenAuction",
             "src": "contracts/Auction.sol:291"
           }
@@ -950,11 +960,11 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(Card)9239": {
+          "t_contract(Card)9296": {
             "label": "contract Card",
             "numberOfBytes": "20"
           },
-          "t_contract(MainToken)9860": {
+          "t_contract(MainToken)9975": {
             "label": "contract MainToken",
             "numberOfBytes": "20"
           },
@@ -1057,7 +1067,7 @@
     },
     "0cd722182dc2908010cf8ff1916b18147696dd513d8896cc42e098aa3c9ea009": {
       "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-      "txHash": "0x9a777f24fd335d33e8222f1f069e7567c3c424bea5cc616e98bca7ecb04ac39e",
+      "txHash": "0xcfac00705e9aeeac0a04f11fb844e7ae362808343b0951dc655f4e4e072e9081",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -1122,7 +1132,7 @@
             "label": "card",
             "offset": 0,
             "slot": "103",
-            "type": "t_contract(Card)9239",
+            "type": "t_contract(Card)9296",
             "contract": "AuctionCoreUpgdaeable",
             "src": "contracts/Auction.sol:30"
           },
@@ -1204,7 +1214,7 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(Card)9239": {
+          "t_contract(Card)9296": {
             "label": "contract Card",
             "numberOfBytes": "20"
           },
@@ -1307,7 +1317,7 @@
     },
     "c1aab966d256cbd48f021316a010eef6426864406758677a0d12c1c176e499e9": {
       "address": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
-      "txHash": "0xafff95330e4522ba3f4d07c7a4bda7ee5ed29342e5648daa26912fe76c6e457e",
+      "txHash": "0x12a8c6109284aa00eb63087840ba8c49c25440fc9f7072dddefa4945b41c1522",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -1356,7 +1366,7 @@
             "label": "bets",
             "offset": 0,
             "slot": "101",
-            "type": "t_mapping(t_uint256,t_struct(AuctionInfo)9889_storage)",
+            "type": "t_mapping(t_uint256,t_struct(AuctionInfo)10004_storage)",
             "contract": "Auction",
             "src": "contracts/oldAuction.sol:25"
           },
@@ -1372,7 +1382,7 @@
             "label": "card",
             "offset": 0,
             "slot": "103",
-            "type": "t_contract(Card)9239",
+            "type": "t_contract(Card)9296",
             "contract": "Auction",
             "src": "contracts/oldAuction.sol:27"
           },
@@ -1380,7 +1390,7 @@
             "label": "maintoken",
             "offset": 0,
             "slot": "104",
-            "type": "t_contract(MainToken)9860",
+            "type": "t_contract(MainToken)9975",
             "contract": "Auction",
             "src": "contracts/oldAuction.sol:28"
           },
@@ -1388,7 +1398,7 @@
             "label": "myBets",
             "offset": 0,
             "slot": "105",
-            "type": "t_mapping(t_address,t_array(t_struct(MyBet)9898_storage)dyn_storage)",
+            "type": "t_mapping(t_address,t_array(t_struct(MyBet)10013_storage)dyn_storage)",
             "contract": "Auction",
             "src": "contracts/oldAuction.sol:29"
           },
@@ -1430,7 +1440,7 @@
             "label": "address",
             "numberOfBytes": "20"
           },
-          "t_array(t_struct(MyBet)9898_storage)dyn_storage": {
+          "t_array(t_struct(MyBet)10013_storage)dyn_storage": {
             "label": "struct Auction.MyBet[]",
             "numberOfBytes": "32"
           },
@@ -1450,15 +1460,15 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(Card)9239": {
+          "t_contract(Card)9296": {
             "label": "contract Card",
             "numberOfBytes": "20"
           },
-          "t_contract(MainToken)9860": {
+          "t_contract(MainToken)9975": {
             "label": "contract MainToken",
             "numberOfBytes": "20"
           },
-          "t_mapping(t_address,t_array(t_struct(MyBet)9898_storage)dyn_storage)": {
+          "t_mapping(t_address,t_array(t_struct(MyBet)10013_storage)dyn_storage)": {
             "label": "mapping(address => struct Auction.MyBet[])",
             "numberOfBytes": "32"
           },
@@ -1470,7 +1480,7 @@
             "label": "mapping(address => uint256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(AuctionInfo)9889_storage)": {
+          "t_mapping(t_uint256,t_struct(AuctionInfo)10004_storage)": {
             "label": "mapping(uint256 => struct Auction.AuctionInfo)",
             "numberOfBytes": "32"
           },
@@ -1478,7 +1488,7 @@
             "label": "mapping(uint256 => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(AuctionInfo)9889_storage": {
+          "t_struct(AuctionInfo)10004_storage": {
             "label": "struct Auction.AuctionInfo",
             "members": [
               {
@@ -1514,7 +1524,7 @@
             ],
             "numberOfBytes": "160"
           },
-          "t_struct(MyBet)9898_storage": {
+          "t_struct(MyBet)10013_storage": {
             "label": "struct Auction.MyBet",
             "members": [
               {
@@ -1894,9 +1904,9 @@
         }
       }
     },
-    "6ecbc6586ac2c0da12951569cb1ae6462825868713b5d91516fb5aa2bc6c79e1": {
+    "1c97a0944c8f3dfab74db8c9100e323de1084830c9fd6bd520c1b494b36390c9": {
       "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-      "txHash": "0xc4df36d6715b02a5bd9f142e9b653602f62e6f03c276022e60e3e9d8ee1c9dc3",
+      "txHash": "0x109f0be3796783f430126c9846138f440bc03fbf319eb9d5e680e7d5ac490297",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -2049,7 +2059,7 @@
             "label": "_arenaAddress",
             "offset": 0,
             "slot": "251",
-            "type": "t_contract(IArena)9306",
+            "type": "t_contract(IArena)9363",
             "contract": "Card",
             "src": "contracts/Card.sol:37"
           },
@@ -2073,7 +2083,7 @@
             "label": "_prices",
             "offset": 0,
             "slot": "254",
-            "type": "t_mapping(t_enum(CardRarity)9318,t_uint256)",
+            "type": "t_mapping(t_enum(CardRarity)9375,t_uint256)",
             "contract": "Card",
             "src": "contracts/Card.sol:40"
           },
@@ -2081,7 +2091,7 @@
             "label": "_upgradePrices",
             "offset": 0,
             "slot": "255",
-            "type": "t_mapping(t_enum(CardRarity)9318,t_uint256)",
+            "type": "t_mapping(t_enum(CardRarity)9375,t_uint256)",
             "contract": "Card",
             "src": "contracts/Card.sol:41"
           },
@@ -2089,7 +2099,7 @@
             "label": "_rarities",
             "offset": 0,
             "slot": "256",
-            "type": "t_mapping(t_uint256,t_enum(CardRarity)9318)",
+            "type": "t_mapping(t_uint256,t_enum(CardRarity)9375)",
             "contract": "Card",
             "src": "contracts/Card.sol:42"
           },
@@ -2097,7 +2107,7 @@
             "label": "_mintAllowances",
             "offset": 0,
             "slot": "257",
-            "type": "t_mapping(t_address,t_enum(CardRarity)9318)",
+            "type": "t_mapping(t_address,t_enum(CardRarity)9375)",
             "contract": "Card",
             "src": "contracts/Card.sol:43"
           },
@@ -2121,7 +2131,7 @@
             "label": "_maintoken",
             "offset": 0,
             "slot": "260",
-            "type": "t_contract(MainToken)9860",
+            "type": "t_contract(MainToken)9975",
             "contract": "Card",
             "src": "contracts/Card.sol:64"
           },
@@ -2199,7 +2209,7 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(IArena)9306": {
+          "t_contract(IArena)9363": {
             "label": "contract IArena",
             "numberOfBytes": "20"
           },
@@ -2207,11 +2217,11 @@
             "label": "contract IERC20Upgradeable",
             "numberOfBytes": "20"
           },
-          "t_contract(MainToken)9860": {
+          "t_contract(MainToken)9975": {
             "label": "contract MainToken",
             "numberOfBytes": "20"
           },
-          "t_enum(CardRarity)9318": {
+          "t_enum(CardRarity)9375": {
             "label": "enum ICard.CardRarity",
             "members": [
               "Common",
@@ -2227,7 +2237,7 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_enum(CardRarity)9318)": {
+          "t_mapping(t_address,t_enum(CardRarity)9375)": {
             "label": "mapping(address => enum ICard.CardRarity)",
             "numberOfBytes": "32"
           },
@@ -2247,7 +2257,7 @@
             "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_enum(CardRarity)9318,t_uint256)": {
+          "t_mapping(t_enum(CardRarity)9375,t_uint256)": {
             "label": "mapping(enum ICard.CardRarity => uint256)",
             "numberOfBytes": "32"
           },
@@ -2255,7 +2265,7 @@
             "label": "mapping(uint256 => address)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_enum(CardRarity)9318)": {
+          "t_mapping(t_uint256,t_enum(CardRarity)9375)": {
             "label": "mapping(uint256 => enum ICard.CardRarity)",
             "numberOfBytes": "32"
           },
@@ -2336,7 +2346,7 @@
     },
     "86f18439bb28ef00c04ab5591ac2c0d345c56dfaeab8b425db1398755e16a0a0": {
       "address": "0x1291Be112d480055DaFd8a610b7d1e203891C274",
-      "txHash": "0x30588064093d6b0b95af68c6c1dbe12437b58ed89476db05c61b0745c5e63ae2",
+      "txHash": "0x8bbb30dce1db4613b05051b24e802700b5862792b26dcdd9df8fbd2054b54214",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
