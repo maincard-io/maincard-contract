@@ -43,7 +43,7 @@ contract Tournament is AccessControlUpgradeable {
         ICard.CardRarity minRequiredRarity
     ) external {
         require(
-            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            hasRole(TOURNAMENT_MANAGER_ROLE, msg.sender),
             "msg.sender should have granted TOURNAMENT_MANAGER_ROLE"
         );
         _torunamentInfos[tournamentId].isInitialized = true;

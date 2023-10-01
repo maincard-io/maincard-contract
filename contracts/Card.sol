@@ -22,6 +22,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         uint256 newValue
     );
     event NewCardMinted(CardRarity rarity, uint256 cardId, uint256 timestamp);
+
     error MissingRequiredRole(bytes32);
     error MythicCardIsNotBuyable();
     error PriceForRarityNotSet(CardRarity);

@@ -46,6 +46,15 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 callId,
         MatchResult choiceId
     );
+    event NewCall_v2(
+        address creator,
+        uint256 eventId,
+        uint256 cardId,
+        ICard.CardRarity rarity,
+        uint256 callId,
+        MatchResult choiceId,
+        uint256 potentialRewardMaintokens
+    );
     event CallAccepted(uint256 callId, address wallet, uint256 cardId);
     event CallAccepted_v2(
         uint256 callId,
@@ -76,7 +85,7 @@ contract Arena is IArena, OwnableUpgradeable {
     uint256 _betId;
     mapping(address => uint256[]) public callsByUser; // user->index->callId
     mapping(address => uint256) public gasFreeOpCounter;
-    mapping(address => mapping(uint256 => uint256)) cardsOnABet;  // user->eventId->counter
+    mapping(address => mapping(uint256 => uint256)) cardsOnABet; // user->eventId->counter
 
     function initialize() public initializer {
         __Ownable_init();
@@ -111,7 +120,10 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 betsAcceptedUntilTs
     ) public onlyOwner {
         require(_eventExists(eventId), "ENE");
-        require(eventInfos[eventId].result == MatchResult.MatchIsInProgress, "NIP");
+        require(
+            eventInfos[eventId].result == MatchResult.MatchIsInProgress,
+            "NIP"
+        );
         eventInfos[eventId].betsAcceptedUntilTs = betsAcceptedUntilTs;
     }
 
@@ -153,10 +165,7 @@ contract Arena is IArena, OwnableUpgradeable {
                 choiceId == MatchResult.SecondWon,
             "Wrong choice"
         );
-        require(
-            cardsOnABet[txSigner][eventId] < 10,
-            "Too much cards"
-        );
+        require(cardsOnABet[txSigner][eventId] < 10, "Too much cards");
     }
 
     function makeBet(
@@ -176,7 +185,9 @@ contract Arena is IArena, OwnableUpgradeable {
         bytes32 _r,
         bytes32 _s
     ) external {
-        bytes memory originalMessage = abi.encodePacked(gasFreeOpCounter[caller]);
+        bytes memory originalMessage = abi.encodePacked(
+            gasFreeOpCounter[caller]
+        );
         for (uint i = 0; i < eventIds.length; i++) {
             bytes memory encodedData = abi.encodePacked(
                 eventIds[i],
@@ -518,13 +529,26 @@ contract Arena is IArena, OwnableUpgradeable {
             calls.length - 1,
             choiceId
         );
+        emit NewCall_v2(
+            sender,
+            eventId,
+            cardId,
+            card.getRarity(cardId),
+            calls.length - 1,
+            choiceId,
+            card.rewardMaintokens(cardId)
+        );
     }
 
     function acceptCall(uint256 callId, uint256 cardId) external {
         _acceptCallCore(callId, cardId, msg.sender);
     }
 
-    function _acceptCallCore(uint256 callId, uint256 cardId, address sender) internal {
+    function _acceptCallCore(
+        uint256 callId,
+        uint256 cardId,
+        address sender
+    ) internal {
         CallInfo storage thisCall = calls[callId];
         _validateCall(thisCall.eventId, cardId, thisCall.choice, sender);
         require(
@@ -670,6 +694,11 @@ contract Arena is IArena, OwnableUpgradeable {
                 secondParticipantCard,
                 abi.encode(PredictionResult.NotApplicable, fakeEventDate)
             );
+
+            uint256 reward = winner == firstParticipantAddress
+                ? card.rewardMaintokens(firstParticipantCard)
+                : card.rewardMaintokens(secondParticipantCard);
+            maintoken.mint(winner, reward);
         } else {
             revert("Call is not claimable");
         }
