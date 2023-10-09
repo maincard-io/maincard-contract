@@ -21,7 +21,7 @@ async function main() {
 
   // console.log("Updating card", cardProxy)
   // await upgrades.forceImport(cardProxy, Card)
-  // await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000, }); console.log('Card upgraded');
+  // await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000, }); console.log("Card upgraded, now run npx hardhat verify --contract contracts/Card.sol:Card --network polygon", cardProxy);
   
   // console.log("Updating arena", arenaProxy);
   // await upgrades.forceImport(arenaProxy, Arena)
@@ -34,10 +34,13 @@ async function main() {
   // console.log("Updating Auction", auctionProxy);
   // await upgrades.upgradeProxy(auctionProxy, Auction, {gasLimit: 800000}); console.log("Auction upgraded")
   
-  // await upgrades.upgradeProxy(maticAuctionProxy, MaticAuction, {gasLimit: 800000}); console.log("MaticAuction upgraded")
+  // console.log("Updating Matic Auction", maticAuctionProxy);
+  // await upgrades.upgradeProxy(maticAuctionProxy, MaticAuction, {gasLimit: 800000, unsafeSkipStorageCheck: true}); console.log("MaticAuction upgraded, now run npx hardhat verify --contract contracts/Auction.sol:MaticAuction --network polygon", maticAuctionProxy)
+  // await upgrades.upgradeProxy(maticAuctionProxy, MaticAuction, {gasLimit: 800000}); console.log("MaticAuction upgraded, now run npx hardhat verify --contract contracts/Auction.sol:MaticAuction --network polygon", maticAuctionProxy)
 
   console.log("Updating tournament", tournamentProxy);
-  await upgrades.upgradeProxy(tournamentProxy, Tournament, {gasLimit: 800000}); console.log("Tournament upgraded, now run npx hardhat verify --network polygon", tournamentProxy)
+  // await upgrades.upgradeProxy(tournamentProxy, Tournament, {gasLimit: 800000}); console.log("Tournament upgraded, now run npx hardhat verify --network polygon", tournamentProxy)
+  await upgrades.upgradeProxy(tournamentProxy, Tournament, {gasLimit: 800000, unsafeSkipStorageCheck: true}); console.log("Tournament upgraded, now run npx hardhat verify --contract contracts/Tournament.sol:Tournament --network polygon", tournamentProxy)
 }
 
 main()

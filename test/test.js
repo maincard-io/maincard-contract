@@ -12,6 +12,7 @@ const Demo = 5;
 describe("Basic tests", function () {
     let instance, maintoken;
     let admin, alice, bob;
+    let arenaAddress
     let Card
 
     before(async () => {
@@ -21,6 +22,7 @@ describe("Basic tests", function () {
         instance = await upgrades.deployProxy(Card);
         const MainToken = await ethers.getContractFactory("MainToken");
         maintoken = await upgrades.deployProxy(MainToken);
+        arenaAddress = maintoken.address  // just to simplify testing
 
         const MINTER_ROLE = await instance.MINTER_ROLE();
         const grantMinterRoleTx = await instance.grantRole(MINTER_ROLE, alice.address);
@@ -28,6 +30,11 @@ describe("Basic tests", function () {
         const PRICE_MANAGER_ROLE = await instance.PRICE_MANAGER_ROLE();
         const grantPriceManagerRoleTx = await instance.grantRole(PRICE_MANAGER_ROLE, bob.address);
         await grantPriceManagerRoleTx.wait();
+
+        const ARENA_CHANGER_ROLE = await instance.ARENA_CHANGER_ROLE();
+        await instance.grantRole(ARENA_CHANGER_ROLE, admin.address);
+
+        await instance.setControlAddresses(arenaAddress, ethers.constants.AddressZero, ethers.constants.AddressZero);
     });
 
     it("Bob Can set price", async () => {
@@ -156,6 +163,26 @@ describe("Basic tests", function () {
         const mintEffects = await mintTx.wait();
         const mintedTokenId1 = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
         await expect(contractAsAlice.transferFrom(alice.address, bob.address, mintedTokenId1)).to.be.revertedWithCustomError(Card, "OperationNotPermittedForDemoCard")
+    })
+
+    it("You can send DEMO to Arena in 5 days", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        const mintTx = await contractAsAlice.freeMint(alice.address, Demo);
+        const mintEffects = await mintTx.wait();
+        const mintedTokenId1 = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
+        await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+        await ethers.provider.send('evm_mine');
+        await contractAsAlice.transferFrom(alice.address, arenaAddress, mintedTokenId1)
+    })
+
+    it("You can not send DEMO to Arena in 15 days", async () => {
+        const contractAsAlice = await instance.connect(alice);
+        const mintTx = await contractAsAlice.freeMint(alice.address, Demo);
+        const mintEffects = await mintTx.wait();
+        const mintedTokenId1 = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
+        await ethers.provider.send('evm_increaseTime', [15 * 24 * 3600]);
+        await ethers.provider.send('evm_mine');
+        await expect(contractAsAlice.transferFrom(alice.address, arenaAddress, mintedTokenId1)).to.be.revertedWithCustomError(Card, "OperationNotPermittedForDemoCard")
     })
 
     it("You can not burn DEMO in 5 days", async () => {

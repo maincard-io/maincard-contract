@@ -15,17 +15,17 @@ contract Tournament is AccessControlUpgradeable {
     ICard public _card;
 
     struct TournamentInfo {
-        uint256 participationFee;
-        bool isInitialized;
-        ICard.CardRarity minRequiredRarity;
         uint256 rewardsCollected;
+        uint256 participationFee;
+        uint8 requiredCardsAmount;
+        ICard.CardRarity minRequiredRarity;
     }
 
     mapping(uint256 => TournamentInfo) public _torunamentInfos;
     mapping(uint256 => mapping(address => bool)) public _registeredPlayers;
     mapping(address => uint256) public _gasFreeOpCounter;
 
-    event RegisteredForTournament(address indexed player, uint256 cardId);
+    event RegisteredForTournament(address indexed player, uint256 tournamentId, uint256 cardId);
 
     function initialize(
         IERC20Upgradeable token,
@@ -40,15 +40,16 @@ contract Tournament is AccessControlUpgradeable {
     function setTournamentRules(
         uint256 tournamentId,
         uint256 fee,
-        ICard.CardRarity minRequiredRarity
+        ICard.CardRarity minRequiredRarity,
+        uint8 requiredCardsAmount
     ) external {
         require(
             hasRole(TOURNAMENT_MANAGER_ROLE, msg.sender),
             "msg.sender should have granted TOURNAMENT_MANAGER_ROLE"
         );
-        _torunamentInfos[tournamentId].isInitialized = true;
         _torunamentInfos[tournamentId].participationFee = fee;
         _torunamentInfos[tournamentId].minRequiredRarity = minRequiredRarity;
+        _torunamentInfos[tournamentId].requiredCardsAmount = requiredCardsAmount;
     }
 
     function completeTournament(
@@ -87,53 +88,22 @@ contract Tournament is AccessControlUpgradeable {
     }
 
     function registerForTournamentGasFree(
-        uint256 cardId,
+        uint256[] calldata cardIds,
         uint256 tournamentId,
         address caller,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) external {
-        bytes memory originalMessage = abi.encodePacked(
-            _gasFreeOpCounter[caller],
-            cardId,
-            tournamentId
-        );
-        bytes32 prefixedHashMessage = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n32",
-                keccak256(originalMessage)
-            )
-        );
-        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
-        require(signer == caller, "snec");
-        ++_gasFreeOpCounter[caller];
-        _registerForTournamentCoreNoFees(cardId, tournamentId, caller);
         require(
-            _token.transferFrom(
-                caller,
-                address(this),
-                _torunamentInfos[tournamentId].participationFee
-            )
+            _torunamentInfos[tournamentId].requiredCardsAmount > 0,
+            "Tournament: not started"
         );
-        _torunamentInfos[tournamentId].rewardsCollected += _torunamentInfos[
-            tournamentId
-        ].participationFee;
-    }
-
-    function massRegisterForTournamentGasFree(
-        uint256[] calldata cardId,
-        uint256 tournamentId,
-        address caller,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external {
         bytes memory originalMessage = abi.encodePacked(
             _gasFreeOpCounter[caller]
         );
-        for (uint256 i = 0; i < cardId.length; ++i) {
-            originalMessage = abi.encodePacked(originalMessage, cardId[i]);
+        for (uint256 i = 0; i < cardIds.length; ++i) {
+            originalMessage = abi.encodePacked(originalMessage, cardIds[i]);
         }
         originalMessage = abi.encodePacked(originalMessage, tournamentId);
         bytes32 prefixedHashMessage = keccak256(
@@ -145,44 +115,31 @@ contract Tournament is AccessControlUpgradeable {
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
         require(signer == caller, "snec");
         ++_gasFreeOpCounter[caller];
-        for (uint256 i = 0; i < cardId.length; ++i) {
-            _registerForTournamentCoreNoFees(cardId[i], tournamentId, caller);
+        for (uint256 i = 0; i < cardIds.length; ++i) {
+            require(_card.ownerOf(cardIds[i]) == caller, "Tournament: not owner");
+            require(
+                _card.isLessRareOrEq(
+                    _torunamentInfos[tournamentId].minRequiredRarity,
+                    _card.getRarity(cardIds[i])
+                ),
+                "Tournament: wrong rarity"
+            );
+            require(
+                _registeredPlayers[tournamentId][caller] == false,
+                "Tournament: already registered"
+            );
+            _registeredPlayers[tournamentId][caller] == true;
+            emit RegisteredForTournament(caller, tournamentId, cardIds[i]);
         }
         require(
             _token.transferFrom(
                 caller,
                 address(this),
-                _torunamentInfos[tournamentId].participationFee * cardId.length
+                _torunamentInfos[tournamentId].participationFee
             )
         );
         _torunamentInfos[tournamentId].rewardsCollected += _torunamentInfos[
             tournamentId
-        ].participationFee * cardId.length;
-    }
-
-    function _registerForTournamentCoreNoFees(
-        uint256 cardId,
-        uint256 tournamentId,
-        address caller
-    ) internal {
-        require(_card.ownerOf(cardId) == caller, "Tournament: not owner");
-        require(
-            _torunamentInfos[tournamentId].isInitialized,
-            "Tournament: not started"
-        );
-        require(
-            _card.isLessRareOrEq(
-                _torunamentInfos[tournamentId].minRequiredRarity,
-                _card.getRarity(cardId)
-            ),
-            "Tournament: wrong rarity"
-        );
-        // To avoid double fees
-        require(
-            _registeredPlayers[tournamentId][caller] == false,
-            "Tournament: already registered"
-        );
-        _registeredPlayers[tournamentId][caller] == true;
-        emit RegisteredForTournament(caller, cardId);
+        ].participationFee;
     }
 }

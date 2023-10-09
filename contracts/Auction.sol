@@ -284,7 +284,7 @@ abstract contract AuctionCoreUpgdaeable is
             );
     }
 
-    uint256[47] private __gap;
+    uint256[46] private __gap;
 }
 
 contract MaintokenAuction is AuctionCoreUpgdaeable {

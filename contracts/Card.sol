@@ -302,15 +302,20 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         uint256 batchSize
     ) internal override {
         for (uint256 cardId = firstCardId; cardId < firstCardId + batchSize; ) {
-            if (
-                _rarities[cardId] == CardRarity.Demo &&
-                _isDemoCardStillAlive(cardId) &&
-                1 == 1 &&
-                from != address(0) &&
-                to != address(0) &&
-                from != address(_arenaAddress) &&
-                to != address(_arenaAddress)
-            ) {
+            bool permitted = true;
+            if (_rarities[cardId] == CardRarity.Demo) {
+                if (_isDemoCardStillAlive(cardId)) {
+                    permitted =
+                        from == address(0) ||
+                        from == address(_arenaAddress) ||
+                        to == address(0) ||
+                        to == address(_arenaAddress);
+                } else {
+                    permitted = to == address(0);
+                }
+            }
+
+            if (!permitted) {
                 revert OperationNotPermittedForDemoCard();
             }
             unchecked {
@@ -490,7 +495,19 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
             return t[curLivesRemaining] * multiplier;
         }
         if (rarity == CardRarity.Mythic) {
-            uint16[11] memory t = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+            uint16[11] memory t = [
+                0,
+                100,
+                200,
+                300,
+                400,
+                500,
+                600,
+                700,
+                800,
+                900,
+                1000
+            ];
             return t[curLivesRemaining] * multiplier;
         }
         return curLivesRemaining * 100 * multiplier;
@@ -553,7 +570,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     function restoreLive(uint256 cardId) external {
         // If paid in MainTokens, price x5
         uint256 cost = recoveryMaintokens(cardId);
-        if (cost == 0) { 
+        if (cost == 0) {
             revert NothingToRestore();
         }
         _maintoken.transferFrom(msg.sender, address(this), cost);
@@ -582,7 +599,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         ++gasFreeOpCounter[caller];
 
         uint256 cost = recoveryMaintokens(cardId);
-        if (cost == 0) { 
+        if (cost == 0) {
             revert NothingToRestore();
         }
         _maintoken.transferFrom(signer, address(this), cost);
@@ -592,7 +609,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     /* Pay with MATIC */
     function restoreLiveMatic(uint256 cardId) external payable {
         uint256 cost = recoveryMatic(cardId);
-        if (cost == 0) { 
+        if (cost == 0) {
             revert NothingToRestore();
         }
         if (msg.value != cost) {
