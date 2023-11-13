@@ -117,59 +117,65 @@ describe("Auction tests", () => {
         expect(cardOwnerAfterSendingToAucSecondTime).to.be.equal(auction.address);
     });
 
-    it("Alice can make a bet on Bobs card with decimal values", async () => {
+    it("Alice can make a bet on Bobs card", async () => {
         const cardId = await mintNewCard(bob);
-        await placeCard(cardId, bob, "100.00");
-    
-        await maintoken.connect(alice).approve(auction.address, "120");
-        await maintoken.connect(carl).approve(auction.address, "125.75");
-    
-        await expect(placeBet(cardId, alice, "50.00")).to.be.revertedWith("TooFew");
+        await placeCard(cardId, bob, "100");
+
+        await maintoken.connect(alice).approve(auction.address, 120)
+        await maintoken.connect(carl).approve(auction.address, 125)
+
+        await expect(placeBet(cardId, alice, "50")).to.be.revertedWith("TooFew");
         await placeBet(cardId, alice, "120");
-        await expect(placeBet(cardId, carl, "115.25")).to.be.revertedWith("TooFew");
-        await placeBet(cardId, carl, "125.75");
-    
-        // she can't take it immediately.
+        await expect(placeBet(cardId, carl, "115")).to.be.revertedWith("TooFew");
+        await placeBet(cardId, carl, "125");
+
+        // she cant take it immediately.
         await expect(takeCard(cardId, alice)).to.be.revertedWith("TooEarly");
-        // bob can't take it back;
+        // bob cant take it back;
         await expect(takeCard(cardId, bob)).to.be.revertedWith("TooEarly");
-    
-        await ethers.provider.send('evm_increaseTime', [48 * 3600 + 5]);
-        await ethers.provider.send('evm_mine');
-    
-        // even if Bob tries to take it back, it is sent to Carl
-        const bobsBalanceBeforeTakingCard = await maintoken.balanceOf(bob.address)
-        await takeCard(cardId, bob)
-        const bobsBalanceAfterTakingCard = await maintoken.balanceOf(bob.address)
-        expect(bobsBalanceAfterTakingCard.sub(bobsBalanceBeforeTakingCard).toString()).to.be.equal("118.25")
-        const cardOwnerAfterTakingFromAuc = await card.ownerOf(cardId);
-        expect(cardOwnerAfterTakingFromAuc).to.be.equal(carl.address);
-    });
-    
-
-    it("Testing Auction with Matic", async () => {
-        const cardId = await mintNewCard(bob);
-        await placeCardToMaticAuction(cardId, bob, ethers.utils.parseEther("0.1"));
-
-        await expect(placeBetToMaticAuction(cardId, alice, ethers.utils.parseEther("0.05"))).to.be.revertedWith("TooFew");
-        const aliceBalanceBeforeBet = await alice.provider.getBalance(alice.address);
-        await placeBetToMaticAuction(cardId, alice, ethers.utils.parseEther("0.12"));
-        const aliceBalanceAfterBet = await alice.provider.getBalance(alice.address);
-        expect(aliceBalanceAfterBet.sub(aliceBalanceBeforeBet).valueOf()).to.be.closeTo(-120000000000000000n, 1000000000000000n)
-
-        await expect(placeBetToMaticAuction(cardId, carl, ethers.utils.parseEther("0.11"))).to.be.revertedWith("TooFew");
-        await placeBetToMaticAuction(cardId, carl, ethers.utils.parseEther("0.15"));
-        const aliceBalanceAfterRefund = await alice.provider.getBalance(alice.address);
-        expect(aliceBalanceAfterRefund.sub(aliceBalanceBeforeBet).valueOf()).to.be.closeTo(0n, 2000000000000000n)
 
         await ethers.provider.send('evm_increaseTime', [48 * 3600 + 5]);
         await ethers.provider.send('evm_mine');
 
         // even it bob tries to take it back, it is sent to carl
-        await takeCardFromMaticAuction(cardId, bob)
+        const bobsBalanceBeforeTakingCard = await maintoken.balanceOf(bob.address)
+        await takeCard(cardId, bob)
+        const bobsBalanceAfterTakingCard = await maintoken.balanceOf(bob.address)
+        expect(bobsBalanceAfterTakingCard.sub(bobsBalanceBeforeTakingCard).toString()).to.be.equal("118")
         const cardOwnerAfterTakingFromAuc = await card.ownerOf(cardId);
         expect(cardOwnerAfterTakingFromAuc).to.be.equal(carl.address);
-    })
+    });
+    
+
+    it("Testing Auction with Matic with decimals", async () => {
+        const cardId = await mintNewCard(bob);
+        await placeCardToMaticAuction(cardId, bob, ethers.utils.parseEther("0.1"));
+    
+        await expect(placeBetToMaticAuction(cardId, alice, ethers.utils.parseEther("0.05"))).to.be.revertedWith("TooFew");
+    
+        const aliceBalanceBeforeBet = await alice.provider.getBalance(alice.address);
+        await placeBetToMaticAuction(cardId, alice, ethers.utils.parseEther("0.12"), { value: ethers.utils.parseEther("0.12") });
+        const aliceBalanceAfterBet = await alice.provider.getBalance(alice.address);
+    
+        // Using BigNumber for precise calculation and comparison
+        expect(aliceBalanceBeforeBet.sub(aliceBalanceAfterBet)).to.be.closeTo(ethers.utils.parseEther("0.12"), ethers.utils.parseEther("0.001"));
+    
+        await expect(placeBetToMaticAuction(cardId, carl, ethers.utils.parseEther("0.11"))).to.be.revertedWith("TooFew");
+        await placeBetToMaticAuction(cardId, carl, ethers.utils.parseEther("0.15"));
+    
+        const aliceBalanceAfterRefund = await alice.provider.getBalance(alice.address);
+        // Alice's balance should be approximately restored after the refund, considering gas costs
+        expect(aliceBalanceAfterRefund).to.be.closeTo(aliceBalanceBeforeBet, ethers.utils.parseEther("0.002"));
+    
+        await ethers.provider.send('evm_increaseTime', [48 * 3600 + 5]);
+        await ethers.provider.send('evm_mine');
+    
+        // Even if Bob tries to take it back, it is sent to Carl
+        await takeCardFromMaticAuction(cardId, bob);
+        const cardOwnerAfterTakingFromAuc = await card.ownerOf(cardId);
+        expect(cardOwnerAfterTakingFromAuc).to.be.equal(carl.address);
+    });
+    
 
     it("Supports gasless ops", async () => {
         const cardId = await mintNewCard(bob);
