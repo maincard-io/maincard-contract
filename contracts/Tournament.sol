@@ -128,7 +128,7 @@ contract Tournament is AccessControlUpgradeable {
                 _registeredPlayers[tournamentId][caller] == false,
                 "Tournament: already registered"
             );
-            _registeredPlayers[tournamentId][caller] == true;
+            _registeredPlayers[tournamentId][caller] = true;
             emit RegisteredForTournament(caller, tournamentId, cardIds[i]);
         }
         require(

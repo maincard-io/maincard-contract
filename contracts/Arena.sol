@@ -13,6 +13,7 @@ contract Arena is IArena, OwnableUpgradeable {
         uint256 betsAcceptedUntilTs;
         bytes32 descriptionHash;
         MatchResult result;
+        uint48 finalResultTimestamp;
     }
     struct BetInfo {
         uint256 eventId;
@@ -109,7 +110,8 @@ contract Arena is IArena, OwnableUpgradeable {
         eventInfos[eventId] = EventInfo(
             betsAcceptedUntilTs,
             descriptionHash,
-            MatchResult.MatchIsInProgress
+            MatchResult.MatchIsInProgress,
+            0
         );
         require(_eventExists(eventId), "E0");
         emit EventCreated(eventId);
@@ -260,7 +262,30 @@ contract Arena is IArena, OwnableUpgradeable {
         // Looks like it is what is it is. We have to accept that the world around
         // is not a pure functional programming.
         eventInfos[eventId].result = resultChoiceId;
+        if (resultChoiceId != MatchResult.MatchIsInProgress) {
+            eventInfos[eventId].finalResultTimestamp = uint48(block.timestamp);
+        }
         emit EventResultChanged(eventId, resultChoiceId);
+    }
+
+    function takeCardImmediately(uint256 cardId) external {
+        address originalOwner = bets[cardId].cardOwner;
+        // Decision to be made by the owner of the card or by the backend.
+        // We can not allow random people to spend your MCN even if you approved it.
+        require(msg.sender == originalOwner || msg.sender == owner(), "Not Yours");
+        uint8 urgencyPrice = 0;
+        uint256 hoursAfterMatch = (block.timestamp - eventInfos[bets[cardId].eventId].finalResultTimestamp) / 1 hours;
+        if (hoursAfterMatch < 1) {
+            uint8[6] memory prices = [2, 6, 18, 54, 162, 2];
+            urgencyPrice = prices[uint8(card.getRarity(cardId))];
+        } else if (hoursAfterMatch < 2) {
+            uint8[6] memory prices = [1, 3, 9, 27, 81, 1];
+            urgencyPrice = prices[uint8(card.getRarity(cardId))];
+        }
+        if (urgencyPrice > 0) {
+            maintoken.transferFrom(originalOwner, address(card), uint256(urgencyPrice) * (10 ** maintoken.decimals()));
+        }
+        takeCard(cardId);
     }
 
     function takeCard(uint256 cardId) public override {
@@ -562,7 +587,9 @@ contract Arena is IArena, OwnableUpgradeable {
         );
         require(
             card.getRarity(cardId) ==
-                card.getRarity(thisCall.firstParticipantCard),
+                card.getRarity(thisCall.firstParticipantCard) &&
+            card.livesRemaining(cardId) ==
+                card.livesRemaining(thisCall.firstParticipantCard),
             "Call should have same cards"
         );
         thisCall.secondParticipantAddress = sender;
