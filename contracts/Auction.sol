@@ -312,26 +312,33 @@ contract MaintokenAuction is AuctionCoreUpgdaeable {
     }
 }
 
-contract MaticAuction is AuctionCoreUpgdaeable {
+abstract contract MaticAuction is AuctionCoreUpgdaeable {
+    uint256 private constant DECIMALS = 2;
+    uint256 private constant DECIMAL_FACTOR = 10**DECIMALS;
+
     function initialize() external initializer {
         __AuctionCore_init();
     }
 
-    function _takePayment(
-        uint256 amount,
-        address /* spender */
-    ) internal override {
-        require(msg.value == amount, "Not enough MATIC");
+    function _takePayment(uint256 amount) internal {
+        require(msg.value == _toWei(amount), "Not enough MATIC");
     }
 
     function _sendPayment(uint256 amount, address receiver) internal override {
-        (bool sent /* memory data */, ) = payable(receiver).call{value: amount}(
-            ""
-        );
+        uint256 weiAmount = _toWei(amount);
+        (bool sent, ) = payable(receiver).call{value: weiAmount}("");
         require(sent, "Failed to send Matic");
     }
 
     function _withdraw() internal override {
-        _sendPayment(address(this).balance, owner());
+        _sendPayment(_fromWei(address(this).balance), owner());
+    }
+
+    function _toWei(uint256 decimalAmount) private pure returns (uint256) {
+        return decimalAmount * DECIMAL_FACTOR;
+    }
+
+    function _fromWei(uint256 weiAmount) private pure returns (uint256) {
+        return weiAmount / DECIMAL_FACTOR;
     }
 }
