@@ -335,10 +335,10 @@ contract MaticAuction is AuctionCoreUpgdaeable {
     }
 
    function _toWei(uint256 decimalAmount) private pure returns (uint256) {
-        return decimalAmount;
+        return decimalAmount * DECIMAL_FACTOR;
     }
 
     function _fromWei(uint256 weiAmount) private pure returns (uint256) {
-        return weiAmount;
+        return weiAmount / DECIMAL_FACTOR;
     }
 }
