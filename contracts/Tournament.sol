@@ -74,7 +74,7 @@ contract Tournament is AccessControlUpgradeable {
             totalPayout += payouts[i];
         }
         require(
-            totalPayout >= _torunamentInfos[tournamentId].rewardsCollected,
+            totalPayout <= _torunamentInfos[tournamentId].rewardsCollected,
             "Tournament: insufficient balance"
         );
         _torunamentInfos[tournamentId].rewardsCollected -= totalPayout;
