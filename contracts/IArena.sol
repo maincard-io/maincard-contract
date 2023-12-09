@@ -18,7 +18,6 @@ interface IArena {
     }
 
     function createEvent(uint256 eventId, uint256 betsAcceptedUntilTs, bytes32 descriptionHash) external;
-    function makeBet(uint256 eventId, uint256 cardId, MatchResult choiceId) external;
     function setEventResult(uint256 eventId, MatchResult resultChoiceId) external;
     function takeCard(uint cardId) external;
 

@@ -1,6 +1,7 @@
 const { expect, assert } = require("chai");
 const { BigNumber } = require("ethers");
 const { ethers, upgrades } = require("hardhat");
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers")
 
 const Regular = 0;
 const Rare = 1;
@@ -42,6 +43,7 @@ describe("Basic tests", function () {
         const setPriceTx = await contractAsBob.setTokenPrice(20, 0);
         await setPriceTx.wait();
     });
+
     it("Admin Can not set price", async () => {
         await expect(instance.setTokenPrice(20, 0)).to.be.revertedWithCustomError(Card, "MissingRequiredRole")
     });
@@ -207,13 +209,7 @@ describe("Basic tests", function () {
 });
 
 describe("Arena tests", () => {
-    let card, arena, maintoken;
-    let arenaAsAlice;
-    let admin, alice, bob;
     let lastEvent = 0;
-    let createEvent;
-    let cardId;
-    let legendaryCardIdBelongingToAlice;
 
     const FirstWon = 2;
     const SecondWon = 4;
@@ -224,15 +220,15 @@ describe("Arena tests", () => {
     const oneHour = 3600;
     const twoDays = 2 * 24 * 3600;
 
-    before(async () => {
-        [admin, alice, bob] = await ethers.getSigners();
+    async function deployContracts() {
+        const [admin, alice, bob] = await ethers.getSigners();
 
         const Card = await ethers.getContractFactory("Card");
-        card = await upgrades.deployProxy(Card);
+        const card = await upgrades.deployProxy(Card);
         const Arena = await ethers.getContractFactory("Arena");
-        arena = await upgrades.deployProxy(Arena);
+        const arena = await upgrades.deployProxy(Arena);
         const MainToken = await ethers.getContractFactory("MainToken");
-        maintoken = await upgrades.deployProxy(MainToken);
+        const maintoken = await upgrades.deployProxy(MainToken);
 
         const ARENA_CHANGER_ROLE = await card.ARENA_CHANGER_ROLE();
         await card.grantRole(ARENA_CHANGER_ROLE, admin.address);
@@ -245,7 +241,7 @@ describe("Arena tests", () => {
         const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
         await card.grantRole(PRICE_MANAGER_ROLE, admin.address);
 
-        createEvent = async (betsUntil) => {
+        const createEvent = async (betsUntil) => {
             lastEvent = lastEvent + 1;
             const createEventTx = await arena.createEvent(lastEvent, betsUntil, "0xff00000000000000000000000000000000000000000000000000000000000000");
             await createEventTx.wait();
@@ -254,9 +250,9 @@ describe("Arena tests", () => {
 
         const mintTx = await card.freeMint(alice.address, Regular);
         const mintEffects = await mintTx.wait();
-        cardId = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
+        const cardId = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
 
-        arenaAsAlice = arena.connect(alice);
+        const arenaAsAlice = arena.connect(alice);
 
         const blockNumBefore = await ethers.provider.getBlockNumber();
         const blockBefore = await ethers.provider.getBlock(blockNumBefore);
@@ -268,10 +264,43 @@ describe("Arena tests", () => {
         await arena.setMainToken(maintoken.address);
         await card.setControlAddresses(arena.address, maintoken.address, ethers.constants.AddressZero)
 
-        legendaryCardIdBelongingToAlice = await getLegendaryCardForAlice();
-    });
+        const makeBetAsAlice = async (eventId, cardId, choice) => {
+            const makeBetMessage = ethers.utils.arrayify(
+                ethers.utils.keccak256(
+                    ethers.utils.solidityPack(
+                        [
+                            "uint256",
+                            "uint256", "uint256", "uint8",
+                        ],
+                        [
+                            await arenaAsAlice.gasFreeOpCounter(alice.address),
+                            eventId, cardId, choice,
+                        ])
+                )
+            )
+            const signatureInfo = ethers.utils.splitSignature(await alice.signMessage(makeBetMessage))
 
-    const getLegendaryCardForAlice = async () => {
+            const tx = await arena.makeBetsGasFree(
+                [eventId],
+                [cardId],
+                [choice],
+                alice.address,
+                signatureInfo.v, signatureInfo.r, signatureInfo.s
+            )
+            await tx.wait()
+        }
+
+        const ctx = { admin, alice, bob, card, arena, maintoken, createEvent, 
+                      cardId /* some card owned by alice */,
+                      arenaAsAlice, makeBetAsAlice }
+
+        const legendaryCardIdBelongingToAlice = await getLegendaryCardForAlice(ctx);
+
+        return {legendaryCardIdBelongingToAlice, ...ctx};
+    }
+
+    const getLegendaryCardForAlice = async (ctx) => {
+        const { alice, card, arena, createEvent, arenaAsAlice, makeBetAsAlice } = ctx;
         const cardAsAlice = card.connect(alice);
         const setPriceTx = await card.setTokenPrice(BigNumber.from("20000000000000000000"), Regular);
         await setPriceTx.wait();
@@ -288,8 +317,7 @@ describe("Arena tests", () => {
                 let eventId = await createEvent(currentBlockTime + halfHour);
                 const cardApproveTx = await cardAsAlice.approve(arenaAsAlice.address, regularCardId)
                 await cardApproveTx.wait()
-                const makeBetTx = await arenaAsAlice.makeBet(eventId, regularCardId, FirstWon);
-                await makeBetTx.wait();
+                await makeBetAsAlice(eventId, regularCardId, FirstWon);
                 // Winning
                 await ethers.provider.send('evm_increaseTime', [oneHour]);
                 currentBlockTime = currentBlockTime + oneHour;
@@ -321,8 +349,7 @@ describe("Arena tests", () => {
                 // Sending
                 let eventId = await createEvent(currentBlockTime + halfHour);
                 await cardAsAlice.approve(arenaAsAlice.address, rareCardId)
-                const makeBetTx = await arenaAsAlice.makeBet(eventId, rareCardId, FirstWon);
-                await makeBetTx.wait();
+                await makeBetAsAlice(eventId, rareCardId, FirstWon);
                 // Winning
                 await ethers.provider.send('evm_increaseTime', [oneHour]);
                 currentBlockTime = currentBlockTime + oneHour;
@@ -344,13 +371,15 @@ describe("Arena tests", () => {
     };
 
     it("Sending, winning and receiving, sending, losing and receiving", async () => {
+        const { alice, arena, admin, card, arenaAsAlice, cardId,
+                maintoken,
+                createEvent, makeBetAsAlice } = await loadFixture(deployContracts);
         const cardAsAlice = card.connect(alice)
 
         // Sending
         let eventId = await createEvent(currentBlockTime + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
-        const makeFirstBetTx = await arenaAsAlice.makeBet(eventId, cardId, FirstWon);
-        await makeFirstBetTx.wait();
+        await makeBetAsAlice(eventId, cardId, FirstWon);
         let cardOwner = await card.ownerOf(cardId);
         expect(cardOwner).to.be.equal(arena.address);
         // Alice is not controlling the card anymore.
@@ -381,8 +410,7 @@ describe("Arena tests", () => {
         // Sending
         eventId = await createEvent(currentBlockTime + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
-        const makeSecondBetTx = await arenaAsAlice.makeBet(eventId, cardId, SecondWon);
-        await makeSecondBetTx.wait();
+        await makeBetAsAlice(eventId, cardId, SecondWon);
 
         // Losing
         await ethers.provider.send('evm_increaseTime', [oneHour]);
@@ -408,12 +436,11 @@ describe("Arena tests", () => {
         eventId = await createEvent(currentBlockTime + twoDays + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
         // Sending within cooloff period.
-        await expect(arenaAsAlice.makeBet(eventId, cardId, SecondWon)).to.be.reverted;
+        await expect(makeBetAsAlice(eventId, cardId, SecondWon)).to.be.reverted;
         await ethers.provider.send('evm_increaseTime', [twoDays]);
         currentBlockTime = currentBlockTime + twoDays;
         await ethers.provider.send('evm_mine');
-        let makeBetTx = await arenaAsAlice.makeBet(eventId, cardId, SecondWon);
-        await makeBetTx.wait();
+        await makeBetAsAlice(eventId, cardId, SecondWon);
 
         // And taking before the match starts.
         takeCardTx = await arenaAsAlice.takeCard(cardId);
@@ -426,8 +453,8 @@ describe("Arena tests", () => {
         // Sending
         eventId = await createEvent(currentBlockTime + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
-        makeBetTx = await arenaAsAlice.makeBet(eventId, cardId, SecondWon);
-        await makeBetTx.wait();
+        await makeBetAsAlice(eventId, cardId, SecondWon);
+
         // Winning
         await ethers.provider.send('evm_increaseTime', [oneHour]);
         currentBlockTime = currentBlockTime + oneHour;
@@ -447,8 +474,8 @@ describe("Arena tests", () => {
         // Sending
         eventId = await createEvent(currentBlockTime + halfHour);
         await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
-        makeBetTx = await arenaAsAlice.makeBet(eventId, cardId, SecondWon);
-        await makeBetTx.wait();
+        await makeBetAsAlice(eventId, cardId, SecondWon);
+
         // Winning
         await ethers.provider.send('evm_increaseTime', [oneHour]);
         currentBlockTime = currentBlockTime + oneHour;
@@ -471,11 +498,16 @@ describe("Arena tests", () => {
     });
 
     it("Does not allow alice to set event result", async () => {
+        const { createEvent, arenaAsAlice } = await loadFixture(deployContracts);
         const eventId = await createEvent(currentBlockTime + halfHour);
         await expect(arenaAsAlice.setEventResult(eventId, FirstWon)).to.be.reverted;
     })
 
     it("Allows to place regular+legendary cards", async () => {
+        const { alice, createEvent, cardId, card, arenaAsAlice, 
+                legendaryCardIdBelongingToAlice,
+                makeBetAsAlice } = await loadFixture(deployContracts);
+
         const cardAsAlice = card.connect(alice);
         const eventId = await createEvent(currentBlockTime + halfHour);
         const takeCards = async () => {
@@ -485,35 +517,30 @@ describe("Arena tests", () => {
             await takeLegendaryCardTx.wait();
         }
 
-        await cardAsAlice.approve(arenaAsAlice.address, cardId)
-        let makeRegularBetTx = await arenaAsAlice.makeBet(eventId, cardId, FirstWon);
-        await makeRegularBetTx.wait();
+        await cardAsAlice.approve(arenaAsAlice.address, cardId);
+        await makeBetAsAlice(eventId, cardId, FirstWon);
         await cardAsAlice.approve(arenaAsAlice.address, legendaryCardIdBelongingToAlice);
-        let makeLegendaryBetTx = await arenaAsAlice.makeBet(eventId, legendaryCardIdBelongingToAlice, SecondWon);
-        await makeLegendaryBetTx.wait();
+        await makeBetAsAlice(eventId, legendaryCardIdBelongingToAlice, SecondWon);
 
         await takeCards();
 
-
         await cardAsAlice.approve(arenaAsAlice.address, legendaryCardIdBelongingToAlice);
-        makeLegendaryBetTx = await arenaAsAlice.makeBet(eventId, legendaryCardIdBelongingToAlice, SecondWon);
-        await makeLegendaryBetTx.wait();
+        await makeBetAsAlice(eventId, legendaryCardIdBelongingToAlice, SecondWon);
         await cardAsAlice.approve(arenaAsAlice.address, cardId);
-        makeRegularBetTx = await arenaAsAlice.makeBet(eventId, cardId, FirstWon);
-        await makeRegularBetTx.wait();
+        await makeBetAsAlice(eventId, cardId, FirstWon);
 
         await takeCards();
     });
 
     it("Lists all active bets", async () => {
+        const { arena, alice, card, arenaAsAlice, cardId, createEvent, makeBetAsAlice } = await loadFixture(deployContracts);
         const cardAsAlice = card.connect(alice);
-
+        
         // Sending
         let eventId = await createEvent(currentBlockTime + halfHour);
         await cardAsAlice.approve(arenaAsAlice.address, cardId);
-        const makeFirstBetTx = await arenaAsAlice.makeBet(eventId, cardId, FirstWon);
-        await makeFirstBetTx.wait();
-
+        await makeBetAsAlice(eventId, cardId, FirstWon);
+        
         // Check!
         const activeBets = await arenaAsAlice.betsByAddressCount(alice.address);
         expect(activeBets).to.be.equal(1);
@@ -521,41 +548,43 @@ describe("Arena tests", () => {
         expect(betEventId.valueOf()).to.be.equal(eventId.valueOf());
         expect(betChoice).to.be.equal(FirstWon);
         expect(betOwner).to.be.equal(alice.address);
-
+        
         // Winning
         await ethers.provider.send('evm_increaseTime', [oneHour]);
         currentBlockTime = currentBlockTime + oneHour;
         await ethers.provider.send('evm_mine');
         const setFirstWonTx = await arena.setEventResult(eventId, FirstWon);
         await setFirstWonTx.wait();
-
+        
         // Receiving
         let takeCardTx = await arenaAsAlice.takeCard(cardId);
         await takeCardTx.wait();
     });
-
+    
     it("When you buy an epic card, you can mint it then", async () => {
+        const { alice, card } = await loadFixture(deployContracts);
         const newUser = ethers.Wallet.createRandom().connect(alice.provider);
         await alice.sendTransaction({ to: newUser.address, value: "700000000000000000000" });
         const cardAsAlice = card.connect(alice)
-
+        
         await card.setTokenPrice(BigNumber.from("2000000000"), Regular);
         await card.setTokenPrice(BigNumber.from("2000000000"), Rare);
         await card.setTokenPrice(BigNumber.from("2000000000"), Epic);
-
+        
         const aliceMintedNewEpic = await cardAsAlice.mint(Epic, { value: "2000000000" });
         const effects = await aliceMintedNewEpic.wait();
         const mintedEpicTokenId = effects.events.filter(e => e.event === "Transfer")[0].args[2];
         expect(await card.getRarity(mintedEpicTokenId)).to.be.equal(2);
         await cardAsAlice.functions['safeTransferFrom(address,address,uint256)'](alice.address, newUser.address, mintedEpicTokenId);
-
+        
         for (let rarity of [Regular, Rare, Epic]) {
             const mintTx = await card.connect(newUser).mint(rarity, { value: "2000000000" });
             await mintTx.wait();
         }
     });
-
+    
     it("Supports gasfree operations", async () => {
+        const { card, arenaAsAlice, createEvent } = await loadFixture(deployContracts);
         const gaslessMan = ethers.Wallet.createRandom();
 
         const mintTx1 = await card.freeMint(gaslessMan.address, Regular);
@@ -604,8 +633,9 @@ describe("Arena tests", () => {
         expect(await card.ownerOf(mintedTokenId2)).to.be.eq(arenaAsAlice.address)
     })
 
-
     it("Checks if list of call participations is updated", async () => {
+        const { arena, card, arenaAsAlice, createEvent } = await loadFixture(deployContracts);
+
         const gaslessMan1 = ethers.Wallet.createRandom();
         const gaslessMan2 = ethers.Wallet.createRandom();
 
@@ -703,21 +733,22 @@ describe("Arena tests", () => {
     })
 
     it("Works as expected for Demo cards", async () => {
+        const { alice, card, arena, arenaAsAlice, createEvent, makeBetAsAlice } = await loadFixture(deployContracts);
         const cardAsAlice = card.connect(alice)
         const mintTx = await card.freeMint(alice.address, Demo);
         const mintEffects = await mintTx.wait();
         const demoCardId = mintEffects.events.filter(e => e.event === "Transfer")[0].args[2];
-
+        
         // Sending
         let eventId = await createEvent(currentBlockTime + halfHour);
-        await arenaAsAlice.makeBet(eventId, demoCardId, FirstWon);
-
+        await makeBetAsAlice(eventId, demoCardId, FirstWon);
+        
         // Losing
         await ethers.provider.send('evm_increaseTime', [oneHour]);
         currentBlockTime = currentBlockTime + oneHour;
         await ethers.provider.send('evm_mine');
         await arena.setEventResult(eventId, SecondWon);
-
+        
         // Receiving
         await arenaAsAlice.takeCard(demoCardId);
         const cardOwner = await card.ownerOf(demoCardId);
@@ -725,10 +756,53 @@ describe("Arena tests", () => {
         
         const livesRemaining = await card.livesRemaining(demoCardId);
         expect(livesRemaining).to.be.equal(1);
-
+        
         // Restoring lives
         await cardAsAlice.restoreLiveMatic(demoCardId, {value: ethers.utils.parseEther("1.0")})
         const livesRemainingAfterRestore = await card.livesRemaining(demoCardId);
         expect(livesRemainingAfterRestore).to.be.equal(2);
     })
+
+    it("Test bets with coefficients", async () => {
+        const { alice, arena, card, cardId, arenaAsAlice, maintoken, createEvent } = await loadFixture(deployContracts);
+        const eventId = await createEvent(currentBlockTime + halfHour);
+        const makeBetMessage = ethers.utils.arrayify(
+            ethers.utils.keccak256(
+                ethers.utils.solidityPack(
+                    [
+                        "uint256",
+                        "uint256", "uint256", "uint8",
+                    ],
+                    [
+                        await arenaAsAlice.gasFreeOpCounter(alice.address),
+                        eventId, cardId, FirstWon,
+                    ])
+            )
+        )
+        const signatureInfo = ethers.utils.splitSignature(await alice.signMessage(makeBetMessage))
+
+        const tx = await arena.makeBetsWithCoeffsGasFree(
+            [eventId],
+            [cardId],
+            [FirstWon],
+            [20000],
+            alice.address,
+            signatureInfo.v, signatureInfo.r, signatureInfo.s
+        )
+        await tx.wait()
+
+        // Winning
+        await ethers.provider.send('evm_increaseTime', [oneHour]);
+        currentBlockTime = currentBlockTime + oneHour;
+        await ethers.provider.send('evm_mine');
+        const setFirstWonTx = await arena.setEventResult(eventId, FirstWon);
+        await setFirstWonTx.wait();
+
+        const mcnBalancePreReceive = await maintoken.balanceOf(alice.address);
+        const expectedReward = await card.rewardMaintokens(cardId);
+        let takeCardTx = await arenaAsAlice.takeCard(cardId);
+        await takeCardTx.wait();
+        const mcnBalancePostReceive = await maintoken.balanceOf(alice.address);
+        expect (mcnBalancePostReceive.sub(mcnBalancePreReceive)).to.be.equal(expectedReward.mul(2));
+    });
 })
