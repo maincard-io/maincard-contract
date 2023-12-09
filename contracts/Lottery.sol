@@ -5,7 +5,6 @@ import "./MainToken.sol";
 
 contract Lottery {
     MainToken public maintoken;
-    // i'm not sure...
     uint256 public ticketPrice = 50 * 10 ** 18;
     address public owner;
     mapping(address => uint256) public ticketsBought;
@@ -18,16 +17,31 @@ contract Lottery {
         owner = msg.sender;
     }
 
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Caller is not the owner");
+        _;
+    }
+
+    function withdraw() public onlyOwner {
+        _withdraw();
+    }
+
+    function _withdraw() internal {
+        uint256 balance = maintoken.balanceOf(address(this));
+        require(maintoken.transfer(owner, balance), "Withdrawal failed");
+    }
+
     function buyTicketGasFree(
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) external {
         bytes memory originalMessage = abi.encodePacked(ticketPrice, gasFreeOpCounter[msg.sender]);
+        bytes32 hashedMessage = keccak256(originalMessage);
         bytes32 prefixedHashMessage = keccak256(
             abi.encodePacked(
-                "\x19E Signed Message:\n32",
-                keccak256(originalMessage)
+                "\x19Signed Message:\n32",
+                hashedMessage
             )
         );
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
