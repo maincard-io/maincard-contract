@@ -23,29 +23,26 @@ contract Lottery {
     }
 
     function withdraw() public onlyOwner {
-        _withdraw();
-    }
-
-    function _withdraw() internal {
         uint256 balance = maintoken.balanceOf(address(this));
         require(maintoken.transfer(owner, balance), "Withdrawal failed");
     }
 
     function buyTicketGasFree(
+        address caller,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) external {
-        bytes memory originalMessage = abi.encodePacked(ticketPrice, gasFreeOpCounter[msg.sender]);
+        bytes memory originalMessage = abi.encodePacked(ticketPrice, gasFreeOpCounter[caller]);
         bytes32 hashedMessage = keccak256(originalMessage);
         bytes32 prefixedHashMessage = keccak256(
             abi.encodePacked(
-                "\x19Signed Message:\n32",
+                "\x19Ethereum Signed Message:\n32",
                 hashedMessage
             )
         );
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
-        require(signer == msg.sender, "Invalid signature");
+        require(signer == caller, "snec");
         require(maintoken.transferFrom(signer, address(this), ticketPrice), "Transfer failed");
 
         ++gasFreeOpCounter[signer];

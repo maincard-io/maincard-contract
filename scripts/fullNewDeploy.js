@@ -11,7 +11,10 @@ async function main() {
   const auctionProxy = getNamedAccount("auctionProxy")
   const backend = getNamedAccount("backendAccount");
   const maticAuctionProxy = getNamedAccount("maticAuctionProxy")
-  const tournamentProxy = "0x0"
+  const tournamentProxy = getNamedAccount("tournamentProxy")
+  const tournamentMaticProxy = getNamedAccount("tournamentMaticProxy")
+
+  const tournamentManager = getNamedAccount("tournamentManagementAccounts")
 
   const CARD_DEPLOYED = true;
   const ARENA_DEPLOYED = true;
@@ -19,7 +22,9 @@ async function main() {
   const MAINTOKEN_DEPOYED = true;
   const MAGICBOX_DEPLOYED = true;
   const MATIC_AUCTION_DEPLOYED = true;
-  const TOURNAMENT_DEPLOYED = false;
+  const TOURNAMENT_DEPLOYED = true;
+  const LOTTERY_DEPLOYED = true;
+  const MATIC_TOURNAMENT_DEPLOYED = true;
 
   const Card = await ethers.getContractFactory("Card");
   const card = await (!CARD_DEPLOYED ? upgrades.deployProxy(Card) : Card.attach(cardProxy));
@@ -63,74 +68,86 @@ async function main() {
   ) : Tournament.attach(tournamentProxy))
   await tournament.deployed()
   console.log("Tournament deployed to:", tournament.address);
+
+  const Lottery = await ethers.getContractFactory("Lottery")
+  const lottery = await (!LOTTERY_DEPLOYED ? Lottery.deploy(card.address) : Lottery.attach(getNamedAccount("lottery")))
+  await lottery.deployed()
+  console.log("Lottery deployed to:", lottery.address);
+
+  const TournamentMatic = await ethers.getContractFactory("TournamentMatic")
+  const tournamentMatic = await (!MATIC_TOURNAMENT_DEPLOYED ? upgrades.deployProxy(TournamentMatic, [card.address]) : TournamentMatic.attach(tournamentMaticProxy))
+  await tournamentMatic.deployed()
+  console.log("TournamentMatic deployed to:", tournamentMatic.address);
   /*
+const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
+const grantPriceManagerRoleTx = await card.grantRole(PRICE_MANAGER_ROLE, admin.address);
+await grantPriceManagerRoleTx.wait();
 
-  const PRICE_MANAGER_ROLE = await card.PRICE_MANAGER_ROLE();
-  const grantPriceManagerRoleTx = await card.grantRole(PRICE_MANAGER_ROLE, admin.address);
-  await grantPriceManagerRoleTx.wait();
+const ARENA_CHANGER_ROLE = await card.ARENA_CHANGER_ROLE();
+const grantArenaChangerRoleTx = await card.grantRole(ARENA_CHANGER_ROLE, admin.address);
+await grantArenaChangerRoleTx.wait();
 
-  const ARENA_CHANGER_ROLE = await card.ARENA_CHANGER_ROLE();
-  const grantArenaChangerRoleTx = await card.grantRole(ARENA_CHANGER_ROLE, admin.address);
-  await grantArenaChangerRoleTx.wait();
+const setArenaTx = await card.setArenaAddress(arena.address);
+await setArenaTx.wait();
+const setCardTx= await arena.setCardAddress(card.address);
+await setCardTx.wait();
+//const setTokenTx = await card.setAcceptedCurrency(freetoken.address);
+//await setTokenTx.wait();
 
-  const setArenaTx = await card.setArenaAddress(arena.address);
-  await setArenaTx.wait();
-  const setCardTx= await arena.setCardAddress(card.address);
-  await setCardTx.wait();
-  //const setTokenTx = await card.setAcceptedCurrency(freetoken.address);
-  //await setTokenTx.wait();
+const minterAccount = await getNamedAccount("minterAccount");
+const MINTER_ROLE = await card.MINTER_ROLE();
+const grantMinterRoleTx = await card.grantRole(MINTER_ROLE, minterAccount);
+await grantMinterRoleTx.wait();
 
-  const minterAccount = await getNamedAccount("minterAccount");
-  const MINTER_ROLE = await card.MINTER_ROLE();
-  const grantMinterRoleTx = await card.grantRole(MINTER_ROLE, minterAccount);
-  await grantMinterRoleTx.wait();
+const setMainTokenInArenaTx = await arena.setMainToken(maintoken.address);
+await setMainTokenInArenaTx.wait();
+const setMainTokenInCardTx = await card.setMainTokenAddress(maintoken.address);
+await setMainTokenInCardTx.wait();
 
-  const setMainTokenInArenaTx = await arena.setMainToken(maintoken.address);
-  await setMainTokenInArenaTx.wait();
-  const setMainTokenInCardTx = await card.setMainTokenAddress(maintoken.address);
-  await setMainTokenInCardTx.wait();
+const changeOwnerTx = await arena.transferOwnership(minterAccount);
+await changeOwnerTx.wait();
 
-  const changeOwnerTx = await arena.transferOwnership(minterAccount);
-  await changeOwnerTx.wait();
+for (let i = 0; i <= 3; ++i) {
+const setPriceTx = await card.setTokenPrice(getNamedAccount(`tokenPrice${i}`), i);
+await setPriceTx.wait();
 
-  for (let i = 0; i <= 3; ++i) {
-    const setPriceTx = await card.setTokenPrice(getNamedAccount(`tokenPrice${i}`), i);
-    await setPriceTx.wait();
+const setUpgradePriceTx = await card.setTokenUpgradePrice(getNamedAccount(`tokenUpgradePrice${i}`), i);
+await setUpgradePriceTx.wait()
+}
 
-    const setUpgradePriceTx = await card.setTokenUpgradePrice(getNamedAccount(`tokenUpgradePrice${i}`), i);
-    await setUpgradePriceTx.wait()
-  }
+const setCardForAuctionTx = await auction.setCardAddress(card.address);
+await setCardForAuctionTx.wait()
+const setMaintokenAuctionTx = await auction.setMaintokenAddress(maintoken.address);
+await setMaintokenAuctionTx.wait();
+const setAuctionCommission = await auction.setCommission(5)
+await setAuctionCommission.wait()
 
-  const setCardForAuctionTx = await auction.setCardAddress(card.address);
-  await setCardForAuctionTx.wait()
-  const setMaintokenAuctionTx = await auction.setMaintokenAddress(maintoken.address);
-  await setMaintokenAuctionTx.wait();
-  const setAuctionCommission = await auction.setCommission(5)
-  await setAuctionCommission.wait()
+const MC_MINTER_ROLE = await maintoken.MINTER_ROLE()
+const setArenaAsMaincardMinterTx = await maintoken.grantRole(MC_MINTER_ROLE, arena.address)
+await setArenaAsMaincardMinterTx.wait()
 
-  const MC_MINTER_ROLE = await maintoken.MINTER_ROLE()
-  const setArenaAsMaincardMinterTx = await maintoken.grantRole(MC_MINTER_ROLE, arena.address)
-  await setArenaAsMaincardMinterTx.wait()
+const setProbabilityTx = await magicBox.setProbability(0x03030302);
+await setProbabilityTx.wait()
 
-  const setProbabilityTx = await magicBox.setProbability(0x03030302);
-  await setProbabilityTx.wait()
+const grantMinterToMagicBox = await card.grantRole(MINTER_ROLE, magicBox.address);
+await grantMinterToMagicBox.wait()
 
-  const grantMinterToMagicBox = await card.grantRole(MINTER_ROLE, magicBox.address);
-  await grantMinterToMagicBox.wait()
-
-  const WITHDRAWER_ROLE = await card.WITHDRAWER_ROLE();
-  const grantWithdrawerTx = await card.grantRole(WITHDRAWER_ROLE, getNamedAccount("fundOwnerWallet"))
-  await grantWithdrawerTx.wait()
-  
-  const setCardForMaticAuctionTx = await maticauction.setCardAddress(card.address);
-  await setCardForMaticAuctionTx.wait()
-  const setMaticAuctionCommission = await maticauction.setCommission(5)
-  await setMaticAuctionCommission.wait()
-  */
-
-  const TOURNAMENT_MANAGER_ROLE = await tournament.TOURNAMENT_MANAGER_ROLE();
-  const grantTournamentManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, backend);
-  await grantTournamentManagerRoleTx.wait();
+const WITHDRAWER_ROLE = await card.WITHDRAWER_ROLE();
+const grantWithdrawerTx = await card.grantRole(WITHDRAWER_ROLE, getNamedAccount("fundOwnerWallet"))
+await grantWithdrawerTx.wait()
+ 
+const setCardForMaticAuctionTx = await maticauction.setCardAddress(card.address);
+await setCardForMaticAuctionTx.wait()
+const setMaticAuctionCommission = await maticauction.setCommission(5)
+await setMaticAuctionCommission.wait()
+ 
+const TOURNAMENT_MANAGER_ROLE = await tournament.TOURNAMENT_MANAGER_ROLE();
+const grantTournamentManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, backend);
+await grantTournamentManagerRoleTx.wait();
+*/
+const TOURNAMENT_MANAGER_ROLE = await tournament.TOURNAMENT_MANAGER_ROLE();
+const grantTournamentMaticManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, tournamentManager);
+await grantTournamentMaticManagerRoleTx.wait();
 }
 
 main()

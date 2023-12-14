@@ -321,24 +321,16 @@ contract MaticAuction is AuctionCoreUpgdaeable {
     }
 
     function _takePayment(uint256 amount, address spender) internal override {
-        require(msg.value == _toWei(amount), "Not enough MATIC");
+        require(msg.value == amount, "Not enough MATIC");
     }
 
     function _sendPayment(uint256 amount, address receiver) internal override {
-        uint256 weiAmount = _toWei(amount);
+        uint256 weiAmount = amount;
         (bool sent, ) = payable(receiver).call{value: weiAmount}("");
         require(sent, "Failed to send Matic");
     }
 
     function _withdraw() internal override {
-        _sendPayment(_fromWei(address(this).balance), owner());
-    }
-
-   function _toWei(uint256 decimalAmount) private pure returns (uint256) {
-        return decimalAmount * DECIMAL_FACTOR;
-    }
-
-    function _fromWei(uint256 weiAmount) private pure returns (uint256) {
-        return weiAmount / DECIMAL_FACTOR;
+        _sendPayment(address(this).balance, owner());
     }
 }

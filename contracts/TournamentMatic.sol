@@ -7,11 +7,10 @@ import "@openzeppelin/contracts-upgradeable/interfaces/IERC721Upgradeable.sol";
 
 import "./ICard.sol";
 
-contract Tournament is AccessControlUpgradeable {
+contract TournamentMatic is AccessControlUpgradeable {
     bytes32 public constant TOURNAMENT_MANAGER_ROLE =
         keccak256("TOURNAMENT_MANAGER_ROLE");
 
-    IERC20Upgradeable public _token;
     ICard public _card;
 
     struct TournamentInfo {
@@ -23,16 +22,13 @@ contract Tournament is AccessControlUpgradeable {
 
     mapping(uint256 => TournamentInfo) public _torunamentInfos;
     mapping(uint256 => mapping(address => bool)) public _registeredPlayers;
-    mapping(address => uint256) public _gasFreeOpCounter;
 
     event RegisteredForTournament(address indexed player, uint256 tournamentId, uint256 cardId);
 
     function initialize(
-        IERC20Upgradeable token,
         ICard card
     ) public initializer {
         __AccessControl_init();
-        _token = token;
         _card = card;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -54,7 +50,7 @@ contract Tournament is AccessControlUpgradeable {
 
     function completeTournament(
         uint256 tournamentId,
-        address[] calldata winners,
+        address payable[] calldata winners,
         uint256[] calldata payouts
     ) external {
         require(
@@ -80,47 +76,31 @@ contract Tournament is AccessControlUpgradeable {
         _torunamentInfos[tournamentId].rewardsCollected -= totalPayout;
 
         for (uint256 i = 0; i < winners.length; ++i) {
-            require(
-                _token.transfer(winners[i], payouts[i]),
-                "Tournament: payout failed"
-            );
+            (bool success, ) = winners[i].call{value: payouts[i]}("");
+            require(success, "Tournament: payout failed");
         }
     }
 
-    function registerForTournamentGasFree(
+    function registerForTournament(
         uint256[] calldata cardIds,
-        uint256 tournamentId,
-        address caller,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external {
+        uint256 tournamentId
+    ) external payable {
         require(
             _torunamentInfos[tournamentId].requiredCardsAmount > 0,
             "Tournament: not started"
         );
-        bytes memory originalMessage = abi.encodePacked(
-            _gasFreeOpCounter[caller]
+        require(
+            cardIds.length == _torunamentInfos[tournamentId].requiredCardsAmount,
+            "Tournament: wrong cards amount"
         );
-        for (uint256 i = 0; i < cardIds.length; ++i) {
-            originalMessage = abi.encodePacked(originalMessage, cardIds[i]);
-        }
-        originalMessage = abi.encodePacked(originalMessage, tournamentId);
-        bytes32 prefixedHashMessage = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n32",
-                keccak256(originalMessage)
-            )
-        );
-        address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
-        require(signer == caller, "snec");
-        ++_gasFreeOpCounter[caller];
+
         for (uint256 i = 0; i < cardIds.length; ++i) {
             // Make sure all cards are unique:
             for (uint256 j = i + 1; j < cardIds.length; ++j) {
                 require(cardIds[i] != cardIds[j], "Tournament: duplicate cards");
             }
-            require(_card.ownerOf(cardIds[i]) == caller, "Tournament: not owner");
+
+            require(_card.ownerOf(cardIds[i]) == msg.sender, "Tournament: not owner");
             require(
                 _card.isLessRareOrEq(
                     _torunamentInfos[tournamentId].minRequiredRarity,
@@ -128,18 +108,10 @@ contract Tournament is AccessControlUpgradeable {
                 ),
                 "Tournament: wrong rarity"
             );
-            _registeredPlayers[tournamentId][caller] = true;
-            emit RegisteredForTournament(caller, tournamentId, cardIds[i]);
+            _registeredPlayers[tournamentId][msg.sender] = true;
+            emit RegisteredForTournament(msg.sender, tournamentId, cardIds[i]);
         }
-        require(
-            _token.transferFrom(
-                caller,
-                address(this),
-                _torunamentInfos[tournamentId].participationFee
-            )
-        );
-        _torunamentInfos[tournamentId].rewardsCollected += _torunamentInfos[
-            tournamentId
-        ].participationFee;
+        require(msg.value == _torunamentInfos[tournamentId].participationFee, "Tournament: wrong fee");
+        _torunamentInfos[tournamentId].rewardsCollected += msg.value;
     }
 }

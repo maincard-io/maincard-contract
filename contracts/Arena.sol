@@ -95,6 +95,7 @@ contract Arena is IArena, OwnableUpgradeable {
     mapping(address => uint256[]) public callsByUser; // user->index->callId
     mapping(address => uint256) public gasFreeOpCounter;
     mapping(address => mapping(uint256 => uint256)) cardsOnABet; // user->eventId->counter
+    mapping(address => bool) badUsers;
 
     //
     // Admin functions
@@ -156,6 +157,10 @@ contract Arena is IArena, OwnableUpgradeable {
         emit EventResultChanged(eventId, resultChoiceId);
     }
 
+    function setBadUser(address user, bool bad) public onlyOwner {
+        badUsers[user] = bad;
+    }
+
     //
     // Helpers
     //
@@ -199,6 +204,7 @@ contract Arena is IArena, OwnableUpgradeable {
             "Wrong choice"
         );
         require(cardsOnABet[txSigner][eventId] < 10, "Too much cards");
+        require(!badUsers[txSigner], "Bad user");
     }
 
     //

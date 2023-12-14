@@ -27,6 +27,9 @@ const DATA = {
     tournamentProxy: {
       "polygon": "0x68654993d9aA8FeC79915dc3Cc8e840e4267F345",
     },
+    tournamentMaticProxy: {
+      "polygon": "0xBc76e0A426B2BCCE61a31Ead3eF3f268afc30ed0",
+    },
     arenaProxy: {
       "mumbai": "0x69E91f33424a211A0B70e879169A0b2684ce2829",
       "polygon": "0x24c6f0C81Cc8E6fc9348Fb3ab5338F903A5B7959",
@@ -45,6 +48,9 @@ const DATA = {
     },
     tournamentManagementAccounts: {
       "polygon": "0x84cD473FF35Bb0BD4D1E9b8540910E6ffa069032",
+    },
+    lottery: {
+      "polygon": "0xb55C3b5c5F37423d54017402d25775aa25f75a39",
     },
     freeToken: {
       "mumbai": "0xe3e3a3C7a3d889f3281e53A7F8BC0296C2fCc781",

@@ -4,8 +4,7 @@ const { ethers } = require("hardhat");
 // Функция для подписания сообщений
 async function signTicketPurchase(signer, ticketPrice, opCounter) {
     const messageHash = ethers.utils.solidityKeccak256(["uint256", "uint256"], [ticketPrice, opCounter]);
-    const ethSignedMessageHash = ethers.utils.hashMessage(ethers.utils.arrayify(messageHash));
-    const signature = await signer.signMessage(ethers.utils.arrayify(ethSignedMessageHash));
+    const signature = await signer.signMessage(ethers.utils.arrayify(messageHash));
     return ethers.utils.splitSignature(signature);
 }
 
@@ -18,12 +17,11 @@ describe("Lottery Contract", function () {
     let alice;
 
     beforeEach(async function () {
-
         [owner, alice] = await ethers.getSigners();
-        MainToken = await ethers.getContractFactory("MainToken");
+        const MainToken = await ethers.getContractFactory("FreeToken");
         mainToken = await MainToken.deploy();
-        await mainToken.deployed();
-        await mainToken.initialize();
+    
+        await mainToken.mint(alice.address, "10000000000000000000000000");
 
         Lottery = await ethers.getContractFactory("Lottery");
         lottery = await Lottery.deploy(mainToken.address);
@@ -37,7 +35,7 @@ describe("Lottery Contract", function () {
         await mainToken.connect(alice).approve(lottery.address, ticketPrice);
 
         const { v, r, s } = await signTicketPurchase(alice, ticketPrice, opCounter);
-        await lottery.connect(alice).buyTicketGasFree(ticketPrice, opCounter, v, r, s);
+        await lottery.connect(alice).buyTicketGasFree(alice.address, v, r, s);
 
         const tickets = await lottery.ticketsBought(alice.address);
         expect(tickets).to.equal(1);
@@ -51,7 +49,7 @@ describe("Lottery Contract", function () {
 
         const { v, r, s } = await signTicketPurchase(alice, ticketPrice, opCounter);
         await expect(
-            lottery.connect(alice).buyTicketGasFree(ticketPrice, opCounter, v, r, s)
-        ).to.be.revertedWith("Transfer failed or not enough tokens approved");
+            lottery.connect(alice).buyTicketGasFree(alice.address, v, r, s)
+        ).to.be.revertedWith("ERC20: insufficient allowance");
     });
 });
