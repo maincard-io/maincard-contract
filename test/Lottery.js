@@ -24,8 +24,7 @@ describe("Lottery Contract", function () {
         await mainToken.mint(alice.address, "10000000000000000000000000");
 
         Lottery = await ethers.getContractFactory("Lottery");
-        lottery = await Lottery.deploy(mainToken.address);
-        await lottery.deployed();
+        lottery = await upgrades.deployProxy(Lottery, [mainToken.address, ethers.utils.parseEther("50")]);
     });
 
     it("Should allow a user to buy a ticket gas free", async () => {

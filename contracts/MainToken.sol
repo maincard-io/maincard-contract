@@ -7,6 +7,8 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 contract MainToken is ERC20Upgradeable, AccessControlUpgradeable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     mapping(address => uint256) public permitOpsCounter;
+    mapping(address => bool) badUsers;
+    mapping(address => bool) allowedDestinations;
 
     function initialize() public initializer {
         __ERC20_init("MainToken", "MCN");
@@ -46,5 +48,33 @@ contract MainToken is ERC20Upgradeable, AccessControlUpgradeable {
         require(signer == sender, "snec");
         ++permitOpsCounter[sender];
         _approve(signer, spender, amount);
+    }
+
+    function setBadUser(address user, bool isBad) public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "msg.sender should have granted DEFAULT_ADMIN_ROLE"
+        );
+        badUsers[user] = isBad;
+    }
+
+    function setAllowedDestination(address destination, bool isAllowed) public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "msg.sender should have granted DEFAULT_ADMIN_ROLE"
+        );
+        allowedDestinations[destination] = isAllowed;
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256
+    ) internal override view {
+        require(!badUsers[from], "bad user");
+        require(!badUsers[to], "bad user");
+
+        // Disallow transfers until accumulation mode is off
+        require(from == address(0) || allowedDestinations[to], "Accumulation Mode is ON");
     }
 }

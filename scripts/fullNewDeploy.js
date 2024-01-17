@@ -23,7 +23,7 @@ async function main() {
   const MAGICBOX_DEPLOYED = true;
   const MATIC_AUCTION_DEPLOYED = true;
   const TOURNAMENT_DEPLOYED = true;
-  const LOTTERY_DEPLOYED = true;
+  const LOTTERY_DEPLOYED = false;
   const MATIC_TOURNAMENT_DEPLOYED = true;
 
   const Card = await ethers.getContractFactory("Card");
@@ -70,7 +70,9 @@ async function main() {
   console.log("Tournament deployed to:", tournament.address);
 
   const Lottery = await ethers.getContractFactory("Lottery")
-  const lottery = await (!LOTTERY_DEPLOYED ? Lottery.deploy(card.address) : Lottery.attach(getNamedAccount("lottery")))
+  const lottery = await (!LOTTERY_DEPLOYED ? upgrades.deployProxy(Lottery, [
+    maintoken.address, "50000000000000000000"
+  ]) : Lottery.attach(getNamedAccount("lottery")))
   await lottery.deployed()
   console.log("Lottery deployed to:", lottery.address);
 
@@ -144,10 +146,10 @@ await setMaticAuctionCommission.wait()
 const TOURNAMENT_MANAGER_ROLE = await tournament.TOURNAMENT_MANAGER_ROLE();
 const grantTournamentManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, backend);
 await grantTournamentManagerRoleTx.wait();
-*/
 const TOURNAMENT_MANAGER_ROLE = await tournament.TOURNAMENT_MANAGER_ROLE();
 const grantTournamentMaticManagerRoleTx = await card.grantRole(TOURNAMENT_MANAGER_ROLE, tournamentManager);
 await grantTournamentMaticManagerRoleTx.wait();
+*/
 }
 
 main()

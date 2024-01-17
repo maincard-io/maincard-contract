@@ -27,7 +27,7 @@ contract Arena is IArena, OwnableUpgradeable {
         // But if the coefficients are inappropriate (Argentina:Jamaika, i.e), where chances are like 1.01 : 15.0,
         // this coeff is effectively should be very close to 0 (NEVER 0 though), to show that this bet
         // should not bing same amout of MCN as it cotentially could.
-        uint24 coeff;
+        // uint24 coeff;  <- commented out before the UI is ready.
     }
 
     struct CallInfo {
@@ -95,7 +95,6 @@ contract Arena is IArena, OwnableUpgradeable {
     mapping(address => uint256[]) public callsByUser; // user->index->callId
     mapping(address => uint256) public gasFreeOpCounter;
     mapping(address => mapping(uint256 => uint256)) cardsOnABet; // user->eventId->counter
-    mapping(address => bool) badUsers;
 
     //
     // Admin functions
@@ -157,10 +156,6 @@ contract Arena is IArena, OwnableUpgradeable {
         emit EventResultChanged(eventId, resultChoiceId);
     }
 
-    function setBadUser(address user, bool bad) public onlyOwner {
-        badUsers[user] = bad;
-    }
-
     //
     // Helpers
     //
@@ -204,7 +199,6 @@ contract Arena is IArena, OwnableUpgradeable {
             "Wrong choice"
         );
         require(cardsOnABet[txSigner][eventId] < 10, "Too much cards");
-        require(!badUsers[txSigner], "Bad user");
     }
 
     //
@@ -233,6 +227,10 @@ contract Arena is IArena, OwnableUpgradeable {
         );
     }
 
+    // Method for sending bets by User is not implemented yet, but
+    // just a reminder: IT MUST CHECK SERVER's SIGNATURE when verifying coeffs.
+
+    // This should be deprecated as soon as migration completes.
     function makeBetsGasFree(
         uint256[] calldata eventIds,
         uint256[] calldata cardIds,
@@ -306,7 +304,7 @@ contract Arena is IArena, OwnableUpgradeable {
     ) internal {
         _validateBet(eventId, cardId, choiceId, cardOwner);
 
-        bets[cardId] = BetInfo(eventId, choiceId, cardOwner, _betId, coeff);
+        bets[cardId] = BetInfo(eventId, choiceId, cardOwner, _betId/*, coeff*/);  // <- commented out before the UI is ready.
         betsByUser[cardOwner].push(cardId);
         card.safeTransferFrom(cardOwner, address(this), cardId);
         ++cardsOnABet[cardOwner][eventId];
@@ -404,7 +402,7 @@ contract Arena is IArena, OwnableUpgradeable {
     function _takeCard(uint256 cardId, PredictionResult result) internal {
         address originalOwner = bets[cardId].cardOwner;
         uint256 betId = bets[cardId].betId;
-        uint24 coeff = bets[cardId].coeff;
+        // uint24 coeff = bets[cardId].coeff;  <- commented out before the UI is ready.
         uint64 eventDate = uint64(
             eventInfos[bets[cardId].eventId].betsAcceptedUntilTs
         );
@@ -443,9 +441,10 @@ contract Arena is IArena, OwnableUpgradeable {
 
         if (result == PredictionResult.Success) {
             uint256 reward = card.rewardMaintokens(cardId);
+            /*  <- commented out before the UI is ready.
             if (coeff > 0) {
                 reward = reward * coeff / 10000;
-            }
+            } */
             maintoken.mint(originalOwner, reward);
             emit CardTakenFromBet(cardId, betId, reward, true);
         } else if (result == PredictionResult.Failure) {

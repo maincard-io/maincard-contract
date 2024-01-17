@@ -22,12 +22,12 @@ describe("Tournament Tests", () => {
         await card.grantRole(await card.MINTER_ROLE(), manager.address)
         await tournament.grantRole(await tournament.TOURNAMENT_MANAGER_ROLE(), manager.address)
         await mainCardToken.grantRole(await mainCardToken.MINTER_ROLE(), manager.address)
+        await mainCardToken.setAllowedDestination(tournament.address, true);
 
         await mainCardToken.connect(manager).mint(alice.address, 100_000_000_000_000_000_000n);
 
         const mintCardToAlice = async (rarity) => {
-            const mintNonce = await card._freeMintNonce();
-            const tx = await card.connect(manager).freeMint2(alice.address, rarity, mintNonce);
+            const tx = await card.connect(manager).freeMint(alice.address, rarity);
             const effects = await tx.wait()
             const ncm = effects.events.filter(e => e.event === 'NewCardMinted')
             expect(ncm).has.lengthOf(1)

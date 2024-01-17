@@ -50,7 +50,7 @@ const DATA = {
       "polygon": "0x84cD473FF35Bb0BD4D1E9b8540910E6ffa069032",
     },
     lottery: {
-      "polygon": "0xb55C3b5c5F37423d54017402d25775aa25f75a39",
+      "polygon": "0x40e9638be0483E7fe3bEefDAcfFDE2933657F6B2",
     },
     freeToken: {
       "mumbai": "0xe3e3a3C7a3d889f3281e53A7F8BC0296C2fCc781",

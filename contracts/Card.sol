@@ -34,6 +34,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     error CanNotBurnDemoYet(uint256 cardId, uint256 cardCreatedTs);
     error NotImplementedForRarity(CardRarity);
     error NothingToRestore();
+    error CardsFromDifferentPartnersNotMergeable(uint256 card1Id, uint256 card2Id);
 
     IArena private _arenaAddress;
     CountersUpgradeable.Counter _lastMint;
@@ -73,7 +74,8 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     mapping(uint256 => CardInfo) public _cardInfos;
     uint256 public _freeMintNonce;
     mapping(address => uint256) public gasFreeOpCounter;
-    mapping(uint256 => uint256) public _demoCardsActivationTimes;
+    mapping(uint256 => uint256) public _demoCardsActivationTimes; // TODO : to be merged with _cardInfos
+    mapping(uint256 => uint256) public partnerIDsForCard;  // TODO : to be merged with _cardInfos
 
     function setControlAddresses(
         IArena arena,
@@ -146,26 +148,39 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
             super.isApprovedForAll(owner, spender);
     }
 
-    function _mint(address newTokenOwner, CardRarity rarity) internal {
+    function _mint(address newTokenOwner, CardRarity rarity) internal returns (uint256) {
+        // Originally we had a logic to allow minting only if the user has already
+        // reached the level of the card. However, it was decided to remove this.
+        // So we used to have:
+        //   - _mintAllowances is only updated when merging cards
+        //   - _mintAllowances is checked when buying a card
+        // But now we don't have it. Although to maintain _mintAllowances in a consistent
+        // state, we are just populating it on every mint.
+
         // require(isLessRareOrEq(rarity, getMintAllowance(newTokenOwner)), "You have not uncovered the level");
+        uint tokenId = _lastMint.current();
+    
         if (isLessRareOrEq(getMintAllowance(newTokenOwner), rarity)) {
             _mintAllowances[newTokenOwner] = rarity;
         }
+
         if (rarity == CardRarity.Demo) {
-            _demoCardsActivationTimes[_lastMint.current()] = block.timestamp;
+            _demoCardsActivationTimes[tokenId] = block.timestamp;
         }
-        _safeMint(newTokenOwner, _lastMint.current());
-        _rarities[_lastMint.current()] = rarity;
-        _livesRemaining[_lastMint.current()] = getDefaultLivesForNewCard(
+        _safeMint(newTokenOwner, tokenId);
+        _rarities[tokenId] = rarity;
+        _livesRemaining[tokenId] = getDefaultLivesForNewCard(
             rarity
         );
-        emit NewCardMinted(rarity, _lastMint.current(), block.timestamp);
+        emit NewCardMinted(rarity, tokenId, block.timestamp);
         emit RemainingLivesChanged(
-            _lastMint.current(),
+            tokenId,
             0,
-            _livesRemaining[_lastMint.current()]
+            _livesRemaining[tokenId]
         );
+
         _lastMint.increment();
+        return tokenId;
     }
 
     function _isDemoCardStillAlive(
@@ -202,8 +217,6 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     }
 
     function freeMint(address newTokenOwner, CardRarity rarity) external {
-        // FreeMint should not call freeMint2, because it will increment the nonce,
-        // but nonce is stored in the database and needed as a sync between DB and blockchain.
         if (!hasRole(MINTER_ROLE, msg.sender)) {
             revert MissingRequiredRole(MINTER_ROLE);
         }
@@ -213,24 +226,15 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         _mint(newTokenOwner, rarity);
     }
 
-    function freeMint2(
-        address newTokenOwner,
-        CardRarity rarity,
-        uint256 freeMintNonce
-    ) external {
-        if (rarity == CardRarity.Mythic) {
-            revert MythicCardIsNotBuyable();
-        }
+    function freePartnersMint(address newTokenOwner, CardRarity rarity, uint256 partnerId) external {
         if (!hasRole(MINTER_ROLE, msg.sender)) {
             revert MissingRequiredRole(MINTER_ROLE);
         }
-        if (freeMintNonce != _freeMintNonce) {
-            revert IncorrectNonce(_freeMintNonce);
+        if (rarity == CardRarity.Mythic) {
+            revert MythicCardIsNotBuyable();
         }
-        unchecked {
-            _freeMintNonce++;
-        }
-        _mint(newTokenOwner, rarity);
+        uint tokenId = _mint(newTokenOwner, rarity);
+        partnerIDsForCard[tokenId] = partnerId;
     }
 
     function safeTransferFrom(
@@ -394,6 +398,9 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         CardRarity rarity1 = getRarity(cardId1);
         CardRarity rarity2 = getRarity(cardId2);
         require(rarity1 == rarity2);
+        if (partnerIDsForCard[cardId1] != partnerIDsForCard[cardId2]) {
+            revert CardsFromDifferentPartnersNotMergeable(partnerIDsForCard[cardId1], partnerIDsForCard[cardId2]);
+        }
         uint256 card1Strike = getLastConsequentWins(cardId1);
         uint256 card2Strike = getLastConsequentWins(cardId2);
         CardRarity[5] memory raritiesToCheck = [
