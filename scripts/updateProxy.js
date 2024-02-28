@@ -21,7 +21,7 @@ async function main() {
 
   console.log("Updating card", cardProxy)
   // await upgrades.forceImport(cardProxy, Card)
-  await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000, }); console.log("Card upgraded, now run npx hardhat verify --contract contracts/Card.sol:Card --network polygon", cardProxy);
+  console.log(await upgrades.upgradeProxy(cardProxy, Card, {gasLimit: 800000, redeployImplementation: 'always'})); console.log("Card upgraded, now run npx hardhat verify --contract contracts/Card.sol:Card --network polygon", cardProxy);
   
   // console.log("Updating arena", arenaProxy);
   // await upgrades.forceImport(arenaProxy, Arena)

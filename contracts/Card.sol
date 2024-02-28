@@ -22,6 +22,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         uint256 newValue
     );
     event NewCardMinted(CardRarity rarity, uint256 cardId, uint256 timestamp);
+    event NewPartnersCardMinted(CardRarity rarity, uint256 cardId, uint256 timestamp, uint256 partnerId);
 
     error MissingRequiredRole(bytes32);
     error MythicCardIsNotBuyable();
@@ -35,6 +36,10 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     error NotImplementedForRarity(CardRarity);
     error NothingToRestore();
     error CardsFromDifferentPartnersNotMergeable(uint256 card1Id, uint256 card2Id);
+    error NotCardOwner(address sender, uint256 cardId);
+    error FailedToSendMatic();
+    error NotUpgradable(uint256 cardId1, uint256 cardId2);
+    error WrongSignature();
 
     IArena private _arenaAddress;
     CountersUpgradeable.Counter _lastMint;
@@ -148,7 +153,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
             super.isApprovedForAll(owner, spender);
     }
 
-    function _mint(address newTokenOwner, CardRarity rarity) internal returns (uint256) {
+    function _mint(address newTokenOwner, CardRarity rarity, uint256 partnerId) internal returns (uint256) {
         // Originally we had a logic to allow minting only if the user has already
         // reached the level of the card. However, it was decided to remove this.
         // So we used to have:
@@ -172,7 +177,10 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         _livesRemaining[tokenId] = getDefaultLivesForNewCard(
             rarity
         );
+        partnerIDsForCard[tokenId] = partnerId;
+
         emit NewCardMinted(rarity, tokenId, block.timestamp);
+        emit NewPartnersCardMinted(rarity, tokenId, block.timestamp, partnerId);
         emit RemainingLivesChanged(
             tokenId,
             0,
@@ -212,7 +220,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         if (msg.value != _prices[rarity]) {
             revert IncorrectValue(msg.value, _prices[rarity]);
         }
-        _mint(msg.sender, rarity);
+        _mint(msg.sender, rarity, 0);
         // _acceptedCurrency.transferFrom(msg.sender, address(this), _prices[rarity]);
     }
 
@@ -223,7 +231,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         if (rarity == CardRarity.Mythic) {
             revert MythicCardIsNotBuyable();
         }
-        _mint(newTokenOwner, rarity);
+        _mint(newTokenOwner, rarity, 0);
     }
 
     function freePartnersMint(address newTokenOwner, CardRarity rarity, uint256 partnerId) external {
@@ -233,8 +241,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         if (rarity == CardRarity.Mythic) {
             revert MythicCardIsNotBuyable();
         }
-        uint tokenId = _mint(newTokenOwner, rarity);
-        partnerIDsForCard[tokenId] = partnerId;
+        uint tokenId = _mint(newTokenOwner, rarity, partnerId);
     }
 
     function safeTransferFrom(
@@ -243,10 +250,9 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         uint256 cardId,
         bytes memory data
     ) public override(ERC721Upgradeable, IERC721Upgradeable) {
-        require(
-            _isApprovedOrOwner(_msgSender(), cardId),
-            "ERC721: caller is not token owner nor approved"
-        );
+        if (!_isApprovedOrOwner(_msgSender(), cardId)) {
+            revert NotCardOwner(_msgSender(), cardId);
+        }
         if (_cardInfos[cardId].frozenUntil > block.timestamp) {
             revert CardIsFrozen(cardId);
         }
@@ -340,7 +346,9 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         (bool sent /* memory data */, ) = payable(msg.sender).call{
             value: address(this).balance
         }("");
-        require(sent, "Failed to send Matic");
+        if (!sent) {
+            revert FailedToSendMatic();
+        }
         // payable(msg.sender).transfer(address(this).balance);
         // _acceptedCurrency.transfer(msg.sender, _acceptedCurrency.balanceOf(msg.sender));
     }
@@ -384,61 +392,56 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     }
 
     function burn(uint256 tokenId) public {
-        require(
-            _isApprovedOrOwner(_msgSender(), tokenId),
-            "ERC721: caller is not token owner nor approved"
-        );
+        if (!_isApprovedOrOwner(_msgSender(), tokenId)) {
+            revert NotCardOwner(_msgSender(), tokenId);
+        }
         delete _rarities[tokenId];
         _burn(tokenId);
     }
 
     function upgrade(uint256 cardId1, uint256 cardId2) external payable {
-        require(_isApprovedOrOwner(_msgSender(), cardId1), "not owner");
-        require(_isApprovedOrOwner(_msgSender(), cardId2), "not owner");
+        if (!_isApprovedOrOwner(_msgSender(), cardId1) || !_isApprovedOrOwner(_msgSender(), cardId2)) {
+            revert NotCardOwner(_msgSender(), 0);
+        }
         CardRarity rarity1 = getRarity(cardId1);
         CardRarity rarity2 = getRarity(cardId2);
         require(rarity1 == rarity2);
-        if (partnerIDsForCard[cardId1] != partnerIDsForCard[cardId2]) {
-            revert CardsFromDifferentPartnersNotMergeable(partnerIDsForCard[cardId1], partnerIDsForCard[cardId2]);
+        if (msg.value != _upgradePrices[rarity1]) {
+            revert IncorrectValue(
+                msg.value,
+                _upgradePrices[rarity1]
+            );
+        }
+        uint256 newPartnerID = 0;
+        if (partnerIDsForCard[cardId1] != 0) {
+            if (partnerIDsForCard[cardId1] != partnerIDsForCard[cardId2] && partnerIDsForCard[cardId2] != 0) {
+                revert CardsFromDifferentPartnersNotMergeable(partnerIDsForCard[cardId1], partnerIDsForCard[cardId2]);
+            }
+            newPartnerID = partnerIDsForCard[cardId1];
+        } else {
+            newPartnerID = partnerIDsForCard[cardId2];
         }
         uint256 card1Strike = getLastConsequentWins(cardId1);
         uint256 card2Strike = getLastConsequentWins(cardId2);
-        CardRarity[5] memory raritiesToCheck = [
-            CardRarity.Common,
-            CardRarity.Rare,
-            CardRarity.Epic,
-            CardRarity.Legendary,
-            CardRarity.Mythic
-        ];
         uint8[4] memory strikesToHave = [3, 6, 12, 25];
-        for (uint256 i = 0; i < strikesToHave.length; ++i) {
-            if (
-                rarity1 == raritiesToCheck[i] &&
-                card1Strike >= strikesToHave[i] &&
-                card2Strike >= strikesToHave[i]
-            ) {
-                burn(cardId1);
-                burn(cardId2);
-                if (
-                    isLessRareOrEq(
-                        getMintAllowance(msg.sender),
-                        raritiesToCheck[i + 1]
-                    )
-                ) {
-                    _mintAllowances[msg.sender] = raritiesToCheck[i + 1];
-                }
-                _mint(msg.sender, raritiesToCheck[i + 1]);
-                if (msg.value != _upgradePrices[raritiesToCheck[i]]) {
-                    revert IncorrectValue(
-                        msg.value,
-                        _upgradePrices[raritiesToCheck[i]]
-                    );
-                }
-                // _acceptedCurrency.transferFrom(msg.sender, address(this), _upgradePrices[raritiesToCheck[i+1]]);
-                return;
-            }
+        if (uint8(rarity1) >= strikesToHave.length || (
+            card1Strike < strikesToHave[uint8(rarity1)] &&
+            card2Strike < strikesToHave[uint8(rarity1)]
+        )) {
+            revert NotUpgradable(cardId1, cardId2);
         }
-        revert("Card is not eligible for upgrade");
+
+        burn(cardId1);
+        burn(cardId2);
+        if (
+            isLessRareOrEq(
+                getMintAllowance(msg.sender),
+                CardRarity(uint8(rarity1) + 1)
+            )
+        ) {
+            _mintAllowances[msg.sender] = CardRarity(uint8(rarity1) + 1);
+        }
+        _mint(msg.sender, CardRarity(uint8(rarity1) + 1), newPartnerID);
     }
 
     function getRarity(uint256 cardId) public view returns (CardRarity) {
@@ -456,23 +459,19 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     function getDefaultLivesForNewCard(
         CardRarity rarity
     ) internal pure returns (uint8) {
-        if (rarity == CardRarity.Common) return 2;
-        if (rarity == CardRarity.Demo) return 2;
-        if (rarity == CardRarity.Rare) return 3;
-        if (rarity == CardRarity.Epic) return 4;
-        if (rarity == CardRarity.Legendary) return 5;
-        if (rarity == CardRarity.Mythic) return 10;
-        revert NotImplementedForRarity(rarity);
+        uint8[6] memory t = [2, 3, 4, 5, 10, 2];
+        uint8 result = t[uint8(rarity)];
+        if (result == 0)
+            revert NotImplementedForRarity(rarity);
+        return result;
     }
 
     function freezePeriod(CardRarity rarity) public pure returns (uint32) {
-        if (rarity == CardRarity.Common) return 3 * 3600;
-        if (rarity == CardRarity.Demo) return 3 * 3600;
-        if (rarity == CardRarity.Rare) return 6 * 3600;
-        if (rarity == CardRarity.Epic) return 12 * 3600;
-        if (rarity == CardRarity.Legendary) return 24 * 3600;
-        if (rarity == CardRarity.Mythic) return 48 * 3600;
-        revert NotImplementedForRarity(rarity);
+        uint8[6] memory t = [3, 6, 12, 24, 48, 3];
+        uint8 result = t[uint8(rarity)];
+        if (result == 0)
+            revert NotImplementedForRarity(rarity);
+        return result * 3600;
     }
 
     function livesRemaining(
@@ -521,12 +520,12 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     }
 
     function cardPrice(CardRarity rarity) external view returns (uint256) {
-        require(_prices[rarity] > 0, "not buyable");
+        require(_prices[rarity] > 0);
         return _prices[rarity];
     }
 
     function upgradePrice(CardRarity rarity) external view returns (uint256) {
-        require(_upgradePrices[rarity] > 0, "not upgradeable");
+        require(_upgradePrices[rarity] > 0);
         return _upgradePrices[rarity];
     }
 
@@ -602,7 +601,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
             )
         );
         address signer = ecrecover(prefixedHashMessage, _v, _r, _s);
-        require(signer == caller, "snec");
+        if (signer != caller) revert WrongSignature();
         ++gasFreeOpCounter[caller];
 
         uint256 cost = recoveryMaintokens(cardId);
@@ -626,7 +625,9 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
     }
 
     function _restoreLive(uint256 cardId, address signer) internal {
-        require(ownerOf(cardId) == signer, "ryoc");
+        if (ownerOf(cardId) != signer) {
+            revert NotCardOwner(signer, cardId);
+        }
         uint256 newLives = getDefaultLivesForNewCard(_rarities[cardId]);
         emit RemainingLivesChanged(cardId, _livesRemaining[cardId], newLives);
         _livesRemaining[cardId] = newLives;
