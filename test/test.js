@@ -386,6 +386,37 @@ describe("Arena tests", () => {
       await tx.wait();
     };
 
+    const makeBetWithOddAsAlice = async (eventId, cardId, choice, odd) => {
+      const makeBetMessage = ethers.utils.arrayify(
+        ethers.utils.keccak256(
+          ethers.utils.solidityPack(
+            ["uint256", "uint256", "uint256", "uint8"],
+            [
+              await arenaAsAlice.gasFreeOpCounter(alice.address),
+              eventId,
+              cardId,
+              choice,
+            ],
+          ),
+        ),
+      );
+      const signatureInfo = ethers.utils.splitSignature(
+        await alice.signMessage(makeBetMessage),
+      );
+
+      const tx = await arena.makeBetsWithOddGasFree(
+        [eventId],
+        [cardId],
+        [choice],
+        [odd],
+        alice.address,
+        signatureInfo.v,
+        signatureInfo.r,
+        signatureInfo.s,
+      );
+      await tx.wait();
+    };
+
     const generateConsequentWins = async (cardId, count) => {
       for (let i = 0; i < count; ++i) {
         const eventId = await createEvent(currentBlockTime + halfHour);
@@ -398,6 +429,18 @@ describe("Arena tests", () => {
         let takeCardTx = await arenaAsAlice.takeCard(cardId);
         await takeCardTx.wait();
       }
+    };
+
+    const createEventMakeBetWinCycle = async (odd) => {
+      const eventId = await createEvent(currentBlockTime + halfHour);
+      await makeBetWithOddAsAlice(eventId, cardId, FirstWon, odd);
+      await ethers.provider.send("evm_increaseTime", [oneHour]);
+      currentBlockTime = currentBlockTime + oneHour;
+      await ethers.provider.send("evm_mine");
+      const setFirstWonTx = await arena.setEventResult(eventId, FirstWon);
+      await setFirstWonTx.wait();
+      let takeCardTx = await arenaAsAlice.takeCard(cardId);
+      await takeCardTx.wait();
     };
 
     const ctx = {
@@ -413,6 +456,7 @@ describe("Arena tests", () => {
       arenaAsAlice,
       makeBetAsAlice,
       generateConsequentWins,
+      createEventMakeBetWinCycle,
     };
 
     const legendaryCardIdBelongingToAlice = await getLegendaryCardForAlice(ctx);
@@ -580,7 +624,7 @@ describe("Arena tests", () => {
     );
     expect(
       alicesMaintokenBalanceAfter.sub(alicesMaintokenBalanceBefore).toString(),
-    ).to.be.equal("3000000000000000000");
+    ).to.be.equal("0");
     const livesRemaining = await card.livesRemaining(cardId);
     expect(livesRemaining).to.be.equal(2);
 
@@ -662,7 +706,7 @@ describe("Arena tests", () => {
       alicesMaintokenBalanceAfterWinningWith1Life
         .sub(alicesMaintokenBalanceWinningWith1Life)
         .toString(),
-    ).to.be.equal("1000000000000000000");
+    ).to.be.equal("0");
     // Sending
     eventId = await createEvent(currentBlockTime + halfHour);
     await (await cardAsAlice.approve(arenaAsAlice.address, cardId)).wait();
@@ -926,11 +970,12 @@ describe("Arena tests", () => {
         await gaslessMan1.signMessage(sendCard1),
       );
 
-      const tx = await arenaAsAlice.createCallGasFree(
+      const tx = await arena.createCallGasFree(
         eventId,
         mintedTokenId1,
-        4,
+        /* outcome */ 4,
         gaslessMan1.address,
+        /* odd */ 0,
         signature1Info.v,
         signature1Info.r,
         signature1Info.s,
@@ -1031,56 +1076,20 @@ describe("Arena tests", () => {
   });
 
   it("Test bets with coefficients", async () => {
-    // Test disabled
-    return true;
+    const { alice, card, maintoken, createEventMakeBetWinCycle } = await loadFixture(deployContracts);
 
-    const { alice, arena, card, cardId, arenaAsAlice, maintoken, createEvent } =
-      await loadFixture(deployContracts);
-    const eventId = await createEvent(currentBlockTime + halfHour);
-    const makeBetMessage = ethers.utils.arrayify(
-      ethers.utils.keccak256(
-        ethers.utils.solidityPack(
-          ["uint256", "uint256", "uint256", "uint8"],
-          [
-            await arenaAsAlice.gasFreeOpCounter(alice.address),
-            eventId,
-            cardId,
-            FirstWon,
-          ],
-        ),
-      ),
-    );
-    const signatureInfo = ethers.utils.splitSignature(
-      await alice.signMessage(makeBetMessage),
-    );
-
-    const tx = await arena.makeBetsWithCoeffsGasFree(
-      [eventId],
-      [cardId],
-      [FirstWon],
-      [20000],
-      alice.address,
-      signatureInfo.v,
-      signatureInfo.r,
-      signatureInfo.s,
-    );
-    await tx.wait();
-
-    // Winning
-    await ethers.provider.send("evm_increaseTime", [oneHour]);
-    currentBlockTime = currentBlockTime + oneHour;
-    await ethers.provider.send("evm_mine");
-    const setFirstWonTx = await arena.setEventResult(eventId, FirstWon);
-    await setFirstWonTx.wait();
-
-    const mcnBalancePreReceive = await maintoken.balanceOf(alice.address);
-    const expectedReward = await card.rewardMaintokens(cardId);
-    let takeCardTx = await arenaAsAlice.takeCard(cardId);
-    await takeCardTx.wait();
-    const mcnBalancePostReceive = await maintoken.balanceOf(alice.address);
-    expect(mcnBalancePostReceive.sub(mcnBalancePreReceive)).to.be.equal(
-      expectedReward.mul(2),
-    );
+    const odds = [105, 150, 450];
+    const expectedMcnRewards = [
+      "0",
+      " 5 000'000'000 000'000'000".replace(/'/g, "").replace(/ /g, ""),  // 10 MCN * 0.5 
+      "30 000'000'000 000'000'000".replace(/'/g, "").replace(/ /g, ""),  // 10 MCN * 3
+    ];
+    for (let i = 0; i < 3; ++i) {
+      const mcnBalanceBefore = await maintoken.balanceOf(alice.address);
+      await createEventMakeBetWinCycle(odds[i]);
+      const mcnBalanceAfter = await maintoken.balanceOf(alice.address);
+      expect(mcnBalanceAfter.sub(mcnBalanceBefore).toString()).to.be.equal(expectedMcnRewards[i]);
+    }
   });
 
   it("Does not allow to merge cards from different partners", async () => {

@@ -320,7 +320,7 @@ contract MaticAuction is AuctionCoreUpgdaeable {
         __AuctionCore_init();
     }
 
-    function _takePayment(uint256 amount, address spender) internal override {
+    function _takePayment(uint256 amount, address /* spender */) internal override {
         require(msg.value == amount, "Not enough MATIC");
     }
 

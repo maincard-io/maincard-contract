@@ -241,7 +241,7 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         if (rarity == CardRarity.Mythic) {
             revert MythicCardIsNotBuyable();
         }
-        uint tokenId = _mint(newTokenOwner, rarity, partnerId);
+        _mint(newTokenOwner, rarity, partnerId);
     }
 
     function safeTransferFrom(
@@ -480,43 +480,58 @@ contract Card is AccessControlUpgradeable, ICard, ERC721EnumerableUpgradeable {
         return _livesRemaining[cardId];
     }
 
-    function rewardMaintokens(uint256 cardId) external view returns (uint256) {
+    function rewardMaintokens(uint256 cardId, uint256 odd) external view returns (uint256) {
         uint256 curLivesRemaining = _livesRemaining[cardId];
         CardRarity rarity = _rarities[cardId];
-        uint256 multiplier = uint256(10) ** (_maintoken.decimals());
+        uint256 multiplier;
+
+        if (odd >= 351) {
+            multiplier = 30; // Insane, эквивалентно x3
+        } else if (odd >= 251) {
+            multiplier = 15; // Hard, эквивалентно x1.5
+        } else if (odd >= 171) {
+            multiplier = 10; // Medium, эквивалентно x1
+        } else if (odd >= 131) {
+            multiplier = 5; // Easy, эквивалентно x0.5
+        } else {
+            return 0;
+            // multiplier = 0; // Obvious, эквивалентно x0
+        }
+        multiplier = multiplier * (10 ** (_maintoken.decimals()));
+
         if (rarity == CardRarity.Common || rarity == CardRarity.Demo) {
-            uint8[3] memory t = [0, 1, 3];
-            return t[curLivesRemaining] * multiplier;
+            uint8[3] memory t = [0, 5, 10];
+            return t[curLivesRemaining] * multiplier / 10;
         }
         if (rarity == CardRarity.Rare) {
-            uint8[4] memory t = [0, 5, 10, 15];
-            return t[curLivesRemaining] * multiplier;
+            uint8[4] memory t = [0, 9, 15, 25];
+            return t[curLivesRemaining] * multiplier / 10;
         }
         if (rarity == CardRarity.Epic) {
-            uint8[5] memory t = [0, 20, 40, 60, 80];
-            return t[curLivesRemaining] * multiplier;
+            uint8[5] memory t = [0, 20, 30, 50, 75];
+            return t[curLivesRemaining] * multiplier / 10;
         }
         if (rarity == CardRarity.Legendary) {
-            uint16[6] memory t = [0, 60, 120, 180, 240, 300];
-            return t[curLivesRemaining] * multiplier;
+            uint8[6] memory t = [0, 50, 80, 120, 175, 250];
+            return t[curLivesRemaining] * multiplier / 10;
         }
         if (rarity == CardRarity.Mythic) {
             uint16[11] memory t = [
                 0,
+                75,
                 100,
-                200,
-                300,
-                400,
-                500,
-                600,
-                700,
-                800,
-                900,
+                140,
+                180,
+                240,
+                320,
+                420,
+                560,
+                750,
                 1000
             ];
-            return t[curLivesRemaining] * multiplier;
+            return t[curLivesRemaining] * multiplier / 10;
         }
-        return curLivesRemaining * 100 * multiplier;
+        return curLivesRemaining * 10 * multiplier;
     }
 
     function cardPrice(CardRarity rarity) external view returns (uint256) {
