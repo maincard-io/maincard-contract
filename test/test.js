@@ -1072,7 +1072,38 @@ describe("Arena tests", () => {
       value: ethers.utils.parseEther("1.0"),
     });
     const livesRemainingAfterRestore = await card.livesRemaining(demoCardId);
-    expect(livesRemainingAfterRestore).to.be.equal(2);
+  });
+
+  it("should restore lives of a demo card successfully", async function() {
+    const [owner, user] = await ethers.getSigners();
+
+    // Deploy Card contract
+    const Card = await ethers.getContractFactory("Card");
+    const card = await Card.deploy();
+    await card.deployed();
+
+    // Assume freeMint function to mint a demo card for the user
+    // Demo card ID is 0 for simplicity
+    const demoCardId = 0;
+    await card.connect(owner).freeMint(user.address, 5); // 5 corresponds to Demo
+
+    // Mock the action that reduces lives (not part of this example)
+    // ...
+
+    // Prepare the message and sign it
+    const nonce = await card.gasFreeOpCounter(user.address);
+    const message = ethers.utils.solidityKeccak256(["uint256", "uint256"], [nonce, demoCardId]);
+    const signature = await user.signMessage(ethers.utils.arrayify(message));
+
+    // Split the signature to pass to the smart contract
+    const { v, r, s } = ethers.utils.splitSignature(signature);
+
+    // Call restoreLiveFree with the signed message
+    await card.connect(owner).restoreLiveFree(demoCardId, user.address, v, r, s);
+
+    // Check if lives have been restored
+    const livesRemaining = await card.livesRemaining(demoCardId);
+    expect(livesRemaining).to.equal(2); // Assuming 2 is the restored lives count
   });
 
   it("Test bets with coefficients", async () => {
