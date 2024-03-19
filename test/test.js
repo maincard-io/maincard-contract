@@ -54,6 +54,11 @@ describe("Basic tests", function () {
     await setPriceTx.wait();
   });
 
+  if("FreezePeriodForLegendary", async () => {
+    const result = await instance.freezePeriod(3);
+    expect(result).to.be.equal(86400);
+  });
+
   it("Admin Can not set price", async () => {
     await expect(instance.setTokenPrice(20, 0)).to.be.revertedWithCustomError(
       Card,

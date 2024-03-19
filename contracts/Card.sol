@@ -543,8 +543,9 @@ contract Card is
     function freezePeriod(CardRarity rarity) public pure returns (uint32) {
         uint8[6] memory t = [3, 6, 12, 24, 48, 3];
         uint8 result = t[uint8(rarity)];
-        if (result == 0) revert NotImplementedForRarity(rarity);
-        return result * 3600;
+        if (result == 0)
+            revert NotImplementedForRarity(rarity);
+        return uint32(result) * 3600;
     }
 
     function livesRemaining(
