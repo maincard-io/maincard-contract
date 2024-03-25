@@ -19,14 +19,14 @@ async function main() {
   const maticAuctionProxy = getNamedAccount("maticAuctionProxy")
   const tournamentProxy = getNamedAccount("tournamentProxy")
 
-  // console.log("Updating card", cardProxy)
+  console.log("Updating card", cardProxy)
   // await upgrades.forceImport(cardProxy, Card)
-  // console.log(await upgrades.upgradeProxy(cardProxy, Card, {txOverrides: { maxFeePerGas: 250e9, maxPriorityFeePerGas: 50e9 }, gasLimit: 800000, redeployImplementation: 'always'})); console.log("Card upgraded, now run npx hardhat verify --contract contracts/Card.sol:Card --network polygon", cardProxy);
+  console.log(await upgrades.upgradeProxy(cardProxy, Card, {txOverrides: { maxFeePerGas: 250e9, maxPriorityFeePerGas: 50e9 }, gasLimit: 800000, redeployImplementation: 'always'})); console.log("Card upgraded, now run npx hardhat verify --contract contracts/Card.sol:Card --network polygon", cardProxy);
   
-  console.log("Updating arena", arenaProxy);
+  // console.log("Updating arena", arenaProxy);
   // await upgrades.forceImport(arenaProxy, Arena)
   // await upgrades.upgradeProxy(arenaProxy, Arena, {gasLimit: 800000, unsafeSkipStorageCheck: true, redeployImplementation: 'always'}); console.log('Arena upgraded');
-  await upgrades.upgradeProxy(arenaProxy, Arena, { txOverrides: { maxFeePerGas: 250e9, maxPriorityFeePerGas: 50e9 }, gasLimit: 800000 }); console.log('Arena upgraded, now run npx hardhat verify --contract contracts/Arena.sol:Arena --network polygon', arenaProxy);
+  // await upgrades.upgradeProxy(arenaProxy, Arena, { txOverrides: { maxFeePerGas: 250e9, maxPriorityFeePerGas: 50e9 }, gasLimit: 800000 }); console.log('Arena upgraded, now run npx hardhat verify --contract contracts/Arena.sol:Arena --network polygon', arenaProxy);
   
   // console.log("Updating maintoken", mainToken);
   // await upgrades.upgradeProxy(mainToken, MainToken, {gasLimit: 800000}); console.log("maintoken updated");

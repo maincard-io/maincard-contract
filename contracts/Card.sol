@@ -16,8 +16,7 @@ import "./MainToken.sol";
 contract Card is
     AccessControlUpgradeable,
     ICard,
-    ERC721EnumerableUpgradeable,
-    OwnableUpgradeable
+    ERC721EnumerableUpgradeable
 {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using StringsUpgradeable for uint256;
@@ -76,7 +75,6 @@ contract Card is
         __AccessControl_init();
         __ERC721_init("MainCard", "MCD");
         __ERC721Enumerable_init();
-        __Ownable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -468,7 +466,7 @@ contract Card is
         _mint(msg.sender, CardRarity(uint8(rarity1) + 1), newPartnerID);
     }
 
-    function upgradeFree(uint256 cardId1, uint256 cardId2) external onlyOwner {
+    function upgradeFree(uint256 cardId1, uint256 cardId2) external {
         if (
             !_isApprovedOrOwner(_msgSender(), cardId1) ||
             !_isApprovedOrOwner(_msgSender(), cardId2)
@@ -682,6 +680,9 @@ contract Card is
         bytes32 _r,
         bytes32 _s
     ) external {
+        if (!hasRole(MINTER_ROLE, msg.sender)) {
+            revert MissingRequiredRole(MINTER_ROLE);
+        }
         bytes memory originalMessage = abi.encodePacked(
             gasFreeOpCounter[caller],
             cardId
@@ -710,7 +711,10 @@ contract Card is
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external onlyOwner {
+    ) external {
+        if (!hasRole(MINTER_ROLE, msg.sender)) {
+            revert MissingRequiredRole(MINTER_ROLE);
+        }
         bytes memory originalMessage = abi.encodePacked(
             gasFreeOpCounter[caller],
             cardId
